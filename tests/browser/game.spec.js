@@ -211,6 +211,8 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await expect(page.locator('#settings-dialog')).toBeVisible();
     await expect(page.locator('#settings')).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('#overlay-title')).toContainText('pause');
+    await page.waitForTimeout(350);
+    await expect(page.locator('#settings-dialog')).toBeVisible();
     await page.locator('#settings-title').hover();
     await page.waitForTimeout(350);
     await expect(page.locator('#settings-dialog')).toBeVisible();
@@ -706,9 +708,10 @@ test('Immersive is a selectable third view; replaying introduction pauses withou
   await begin(page);
   await page.keyboard.press('Space');
   await expect(page.locator('#score')).not.toHaveText('000000');
-  await page.locator('#settings').hover();
+  await page.locator('#settings').click();
   const score = await page.locator('#score').textContent();
   const pieces = await page.locator('#next-0').getAttribute('aria-label');
+  await page.locator('#setting-view').focus();
   await page.locator('#setting-view').selectOption('immersive');
   await expect(page.locator('#setting-header')).not.toBeChecked();
   await expect(page.locator('#setting-footer')).not.toBeChecked();
@@ -722,8 +725,9 @@ test('Immersive is a selectable third view; replaying introduction pauses withou
   await expect(page.locator('#quick-pause')).toHaveAttribute('aria-label', 'Resume game');
   await expect(page.locator('#next-0')).toHaveAttribute('aria-label', pieces);
   await page.locator('#restore-menu').click();
-  await page.locator('#settings').hover();
+  await page.locator('#settings').click();
   await expect(page.locator('#setting-view')).toHaveValue('custom');
+  await page.locator('#setting-view').focus();
   await page.locator('#setting-view').selectOption('focus');
   await expect(page.locator('#setting-header')).toBeChecked();
   await expect(page.locator('#setting-footer')).toBeChecked();

@@ -462,7 +462,8 @@ function closeSettings() {
 function scheduleSettingsClose() {
   clearTimeout(settingsCloseTimer);
   settingsCloseTimer = setTimeout(() => {
-    if (!$('settings-dialog').contains(document.activeElement) && document.activeElement !== $('settings')) closeSettings();
+    const hovered = $('settings').matches(':hover') || $('settings-dialog').matches(':hover');
+    if (!hovered && !$('settings-dialog').contains(document.activeElement) && document.activeElement !== $('settings')) closeSettings();
   }, 250);
 }
 for (const id of ['settings', 'settings-dialog']) {

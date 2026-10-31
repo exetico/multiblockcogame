@@ -40,6 +40,9 @@ Skip/Escape/Continue on onboarding keeps the current view, never forces a new
 preset. The introduction is replayable from settings/help, pauses gameplay,
 uses live binding labels, and explains hidden-menu recovery and configurable
 features. Do not auto-resume or reset the round after dismissal.
+The hover-close grace timer must check pointer presence as well as focus:
+keep settings open while either the gear or panel is hovered, even after
+restoring focus to the game.
 
 ## Required invariants
 
