@@ -111,3 +111,96 @@ test('standard gamepad plays the right side, supports pause, and disconnect paus
   await expect(page.locator('#overlay-title')).toContainText('pause');
   await expect(page.locator('#toast')).toContainText('disconnected');
 });
+
+for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 1024, height: 768 }, { width: 900, height: 600 }]) {
+  test(`focus maximizes the square field without scrolling at ${viewport.width} × ${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    const original = await page.locator('#board').boundingBox();
+    await page.getByRole('button', { name: 'Toggle focus mode' }).click();
+    await expect(page.locator('body')).toHaveClass(/focus-mode/);
+    const board = await page.locator('#board').boundingBox();
+    expect(board.width).toBeGreaterThan(original.width * 1.2);
+    expect(board.height).toBeGreaterThanOrEqual(Math.min(viewport.height - 142, viewport.width - 446));
+    expect(Math.abs(board.width - board.height)).toBeLessThan(2);
+    const score = await page.locator('.scoreboard').boundingBox();
+    const dock = await page.locator('.shared-dock').boundingBox();
+    expect(score.x + score.width).toBeLessThan(board.x);
+    expect(dock.x).toBeGreaterThan(board.x + board.width);
+    for (const id of [0, 1]) {
+      expect((await page.locator(`.player-${id === 0 ? 'one' : 'two'} .controls`).boundingBox()).height).toBeLessThan(100);
+    }
+    const pageSize = await page.evaluate(() => ({
+      width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
+    }));
+    expect(pageSize.width).toBeLessThanOrEqual(viewport.width);
+    expect(pageSize.height).toBeLessThanOrEqual(viewport.height);
+    await expect(page.locator('#pause')).toBeInViewport();
+    await expect(page.locator('#restart')).toBeInViewport();
+    await page.getByRole('button', { name: 'LET’S PLAY' }).click();
+    await page.keyboard.press('Space');
+    await expect(page.locator('#score')).not.toHaveText('000000');
+    await page.keyboard.press('Period');
+    await expect(page.locator('#hold')).not.toHaveAttribute('aria-label', 'Shared parked piece, empty');
+  });
+}
+
+test('focus preserves a running round, adapts across breakpoints, and persists', async ({ page }) => {
+  await begin(page);
+  await page.keyboard.press('Space');
+  await expect(page.locator('#score')).not.toHaveText('000000');
+  const score = await page.locator('#score').textContent();
+  await page.getByRole('button', { name: 'Toggle focus mode' }).click();
+  await expect(page.locator('#overlay')).toBeHidden();
+  await expect(page.locator('#score')).toHaveText(score);
+  await page.keyboard.press('Escape');
+  const preview = await page.locator('#next-0').getAttribute('aria-label');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('main > .scoreboard')).toBeVisible();
+  await expect(page.locator('main > .shared-dock')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(page.locator('.player-one > .scoreboard')).toBeVisible();
+  await expect(page.locator('.player-two > .shared-dock')).toBeVisible();
+  await page.getByRole('button', { name: 'Toggle focus mode' }).click();
+  await expect(page.locator('main > .scoreboard')).toBeVisible();
+  await expect(page.locator('#score')).toHaveText(score);
+  await expect(page.locator('#next-0')).toHaveAttribute('aria-label', preview);
+  await page.getByRole('button', { name: 'Toggle focus mode' }).click();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Toggle focus mode' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.player-one > .scoreboard')).toBeVisible();
+});
+
+test('display settings pause safely, change grid rendering and hints, and persist without changing rules', async ({ page }) => {
+  await begin(page);
+  await page.keyboard.press('Space');
+  await expect(page.locator('#score')).not.toHaveText('000000');
+  await page.getByRole('button', { name: 'Display settings' }).click();
+  await expect(page.locator('#settings-dialog')).toBeVisible();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  const before = await page.locator('#board').evaluate(canvas => canvas.toDataURL());
+  const score = await page.locator('#score').textContent();
+  await page.locator('#setting-grid').uncheck();
+  await expect.poll(() => page.locator('#board').evaluate(canvas => canvas.toDataURL())).not.toBe(before);
+  await page.locator('#setting-hints').uncheck();
+  await page.locator('#setting-focus').check();
+  await expect(page.getByRole('button', { name: 'Toggle focus mode' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.player-one .controls')).toBeHidden();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#score')).toHaveText(score);
+  await page.getByRole('button', { name: 'DONE', exact: false }).click();
+  await expect(page.locator('#settings-dialog')).toBeHidden();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await expect(page.locator('#board')).toHaveAttribute('aria-label', 'Shared falling-block board, 12 columns and 12 rows');
+  await page.getByRole('button', { name: 'BACK TOGETHER' }).click();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#score')).not.toHaveText(score);
+  await page.reload();
+  await page.getByRole('button', { name: 'Display settings' }).click();
+  await expect(page.locator('#setting-grid')).not.toBeChecked();
+  await expect(page.locator('#setting-hints')).not.toBeChecked();
+  await expect(page.locator('#setting-focus')).toBeChecked();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#settings-dialog')).toBeHidden();
+});

@@ -12,7 +12,7 @@ function toast(message) {
   toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4200);
 }
 
-const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true };
+const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, focus: false, grid: true, hints: true };
 let saved = { ...defaults };
 let storageAvailable = true;
 try {
@@ -24,6 +24,9 @@ try {
       lifetimeXP: Number.isSafeInteger(parsed.lifetimeXP) && parsed.lifetimeXP >= 0 ? parsed.lifetimeXP : 0,
       sound: typeof parsed.sound === 'boolean' ? parsed.sound : true,
       relays: typeof parsed.relays === 'boolean' ? parsed.relays : true,
+      focus: typeof parsed.focus === 'boolean' ? parsed.focus : false,
+      grid: typeof parsed.grid === 'boolean' ? parsed.grid : true,
+      hints: typeof parsed.hints === 'boolean' ? parsed.hints : true,
     };
   }
 } catch (error) {
@@ -69,6 +72,34 @@ function blurButton() {
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 }
 
+const scoreboard = document.querySelector('.scoreboard');
+const dock = document.querySelector('.shared-dock');
+const scoreHome = document.createComment('Team progress home');
+const dockHome = document.createComment('Shared space home');
+scoreboard.before(scoreHome);
+dock.before(dockHome);
+const wideScreen = window.matchMedia('(min-width: 701px)');
+const isDialogOpen = () => $('help-dialog').open || $('settings-dialog').open;
+
+function applyDisplay() {
+  document.body.classList.toggle('focus-mode', saved.focus);
+  document.body.classList.toggle('hide-hints', !saved.hints);
+  $('focus').setAttribute('aria-pressed', String(saved.focus));
+  $('setting-focus').checked = saved.focus;
+  $('setting-grid').checked = saved.grid;
+  $('setting-hints').checked = saved.hints;
+  renderer.showGrid = saved.grid;
+  if (saved.focus && wideScreen.matches) {
+    document.querySelector('.player-one').append(scoreboard);
+    document.querySelector('.player-two').append(dock);
+  } else {
+    scoreHome.after(scoreboard);
+    dockHome.after(dock);
+  }
+}
+wideScreen.addEventListener('change', applyDisplay);
+applyDisplay();
+
 function updateOverlay() {
   const active = state === 'playing';
   $('overlay').hidden = active;
@@ -92,7 +123,7 @@ function updateOverlay() {
 }
 
 function start() {
-  if ($('help-dialog').open) return;
+  if (isDialogOpen()) return;
   audio.unlock();
   blurButton();
   if (state === 'paused') {
@@ -131,7 +162,7 @@ const input = new Input({
   onPause: pause,
   onActivate: start,
   isPlaying: () => state === 'playing',
-  isDialogOpen: () => $('help-dialog').open,
+  isDialogOpen,
   onPads(slots, lost, unsupported) {
     [0, 1].forEach(id => {
       $('device-' + id).textContent = slots.some(slot => slot.player === id) ? 'CONTROLLER + KEYS' : 'KEYBOARD';
@@ -243,6 +274,28 @@ function frame(now) {
 
 $('play').addEventListener('click', start);
 $('pause').addEventListener('click', pause);
+$('focus').addEventListener('click', () => {
+  saved.focus = !saved.focus;
+  applyDisplay();
+  save();
+  blurButton();
+});
+$('settings').addEventListener('click', () => {
+  if (state === 'playing') pause();
+  input.reset();
+  $('settings-dialog').showModal();
+});
+for (const [id, key] of [['setting-focus', 'focus'], ['setting-grid', 'grid'], ['setting-hints', 'hints']]) {
+  $(id).addEventListener('change', () => {
+    saved[key] = $(id).checked;
+    applyDisplay();
+    save();
+  });
+}
+for (const id of ['close-settings', 'settings-done']) {
+  $(id).addEventListener('click', () => $('settings-dialog').close());
+}
+$('settings-dialog').addEventListener('close', () => { input.reset(); blurButton(); });
 $('restart').addEventListener('click', () => {
   if (state === 'playing') pause();
   if ((state === 'paused' && (game.score || game.players.some(p => p.queue.length && p.canHold === false))) || game.lines) {
