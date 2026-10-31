@@ -62,18 +62,27 @@ cannot register many simultaneous keys; controllers avoid keyboard ghosting.
 
 ## Focus mode and display settings
 
-Click **FOCUS** in the toolbar to expand the playfield without entering browser
-fullscreen. On wide screens, the team score and XP move to the left sidebar,
+**Focus is the default layout.** On your first visit, an overlay lets you
+choose Focus (recommended) or Classic for your screen. Skip or press Escape
+to use Focus. Your choice is remembered in local storage and a one-year,
+same-site preference cookie scoped to this game's path; there is no tracking.
+Existing progress and preferences are preserved.
+
+The round **layout icon** beside fullscreen switches between Focus and Classic
+without restarting the round. Focus expands the playfield without entering
+browser fullscreen. On wide screens, the team score and XP move to the left sidebar,
 and the shared park and exchange status move to the right. The header is
 shorter, keyboard hints use compact rows, and the square field uses the
 available screen height (or width on narrower screens). On phones, score and
 shared space remain above/below the board to keep it readable.
 
-The **gear** opens display settings: focus mode, grid lines, and keyboard hints.
+**Hover over the gear** to open the display panel: focus mode, grid lines, and
+keyboard hints. Move away to close it. Keyboard focus also opens the panel;
+touch users can tap the gear. Escape, Done, or clicking outside closes it.
 Turning grid lines off keeps the two shared columns highlighted. Preferences
 persist in this browser and do not alter the **12 × 12 rules**, reset your
 round, or change XP/scoring. Opening settings pauses an active game; closing
-them leaves it paused until you resume. The toolbar focus toggle itself does
+them leaves it paused until you resume. The toolbar layout toggle itself does
 not pause or restart play. Fullscreen remains a separate option.
 
 ## Score and XP

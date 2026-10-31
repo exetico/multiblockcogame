@@ -20,9 +20,13 @@ and shared dock nodes into sidebars above 700px, restoring them through DOM
 anchors on smaller screens or when focus is disabled. Preserve IDs, handlers,
 and accessibility; do not duplicate HUD nodes. Canvas resize is handled by
 the renderer's ResizeObserver. Grid visibility must not hide overlap markers.
-Both settings and help dialogs must gate keyboard/gamepad gameplay and pause
-an active round. Persist display preferences alongside existing progress with
-validated defaults for older saves.
+Settings use a non-modal hover panel, with a pointer-leave grace period,
+keyboard focus, Escape/outside dismissal, and tap fallback. Do not let hover
+steal focus or auto-resume gameplay. All open panels/dialogs, including the
+first-visit layout chooser, gate keyboard/gamepad gameplay. Settings/help pause
+an active round. Focus defaults to true; Classic stays available. Persist the
+layout choice in validated local storage and a path-scoped same-site cookie,
+with visible storage errors. Skip/Escape on onboarding selects Focus.
 
 ## Required invariants
 

@@ -15,8 +15,8 @@
         <a class="brand" href="./" aria-label="Common Ground home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>COMMON<span class="brand-light">GROUND</span></span></a>
         <span class="edition"><span class="status-dot"></span> LOCAL CO-OP <span class="edition-extra">/ TWO PLAYERS, ONE TEAM</span></span>
         <nav class="utility" aria-label="Game settings">
-          <button id="focus" class="text-button focus-button" aria-label="Toggle focus mode" aria-pressed="false" title="Larger playfield">FOCUS</button>
-          <button id="settings" class="icon-button" aria-label="Display settings" title="Display settings">⚙</button>
+          <button id="focus" class="icon-button focus-button" aria-label="Toggle focus mode" aria-pressed="true" title="Focus / Classic layout"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18"/></svg></button>
+          <button id="settings" class="icon-button" aria-label="Display settings" aria-controls="settings-dialog" aria-expanded="false" aria-haspopup="dialog" title="Hover for display settings">⚙</button>
           <button id="sound" class="icon-button" aria-label="Mute sound" title="Toggle sound">♪</button>
           <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen" title="Fullscreen">⛶</button>
           <button id="help" class="icon-button" aria-label="How to play" title="How to play">?</button>
@@ -79,16 +79,27 @@
       <footer><span>FALL TOGETHER. RISE TOGETHER.</span><span id="controller-status">KEYBOARD + GAMEPADS <span class="footer-dot">·</span> <button id="restart" class="text-button">NEW GAME</button></span></footer>
     </div>
 
-    <dialog id="settings-dialog">
+    <dialog id="layout-dialog" aria-labelledby="layout-title">
+      <div class="dialog-heading"><span class="eyebrow">YOUR SCREEN. YOUR COMMON GROUND.</span><button id="skip-layout" class="icon-button" aria-label="Use default Focus layout">×</button></div>
+      <h2 id="layout-title">Make yourself<br /><em>at home.</em></h2>
+      <p>Choose the layout that suits your screen. Focus is recommended for more room to play. Both layouts use the same 12 × 12 field.</p>
+      <div class="layout-choices">
+        <button id="choose-focus" autofocus><span class="layout-preview preview-focus" aria-hidden="true"><i></i><i></i><i></i></span><strong>Focus <small>RECOMMENDED</small></strong><span>Larger board, compact sidebars.</span></button>
+        <button id="choose-classic"><span class="layout-preview preview-classic" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>Classic</strong><span>Score above, more breathing room.</span></button>
+      </div>
+      <p class="help-fineprint">We remember your choice in this browser using a preference cookie and local storage. You can change it anytime with the layout button beside fullscreen. Skip or press Escape to use Focus.</p>
+    </dialog>
+
+    <dialog id="settings-dialog" aria-labelledby="settings-title">
       <div class="dialog-heading"><span class="eyebrow">MAKE ROOM TO PLAY</span><button id="close-settings" class="icon-button" aria-label="Close display settings">×</button></div>
-      <h2>Less distraction.<br /><em>More common ground.</em></h2>
+      <h2 id="settings-title">Display settings</h2>
       <p>Display changes only. The field stays 12 × 12, with two shared columns. Your round and earned progress stay intact.</p>
       <div class="display-options">
         <label><span><strong>Focus mode</strong><small>A larger field, side-mounted score and shared space on wide screens.</small></span><input id="setting-focus" type="checkbox" /></label>
         <label><span><strong>Grid lines</strong><small>Show cell guides. The shared columns remain highlighted either way.</small></span><input id="setting-grid" type="checkbox" checked /></label>
         <label><span><strong>Keyboard hints</strong><small>Compact controls below each player's next pieces.</small></span><input id="setting-hints" type="checkbox" checked /></label>
       </div>
-      <p class="help-fineprint">Preferences stay in this browser. Opening settings pauses a running game; close them and resume when both players are ready. Focus mode works independently of browser fullscreen.</p>
+      <p class="help-fineprint">Opening settings pauses play. Move away to close, then resume when ready. Focus is independent of fullscreen.</p>
       <button id="settings-done" class="primary-button">DONE <span>↗</span></button>
     </dialog>
 

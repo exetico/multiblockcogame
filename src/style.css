@@ -9,8 +9,26 @@
 
 .arena-column{max-width:var(--board-size)}
 .board-shell{aspect-ratio:1}
-.focus-button{padding:5px 9px;border:1px solid var(--line);border-radius:4px}
 .focus-button[aria-pressed=true]{color:var(--mint);border-color:#79e3cb66;background:#79e3cb0a}
+#settings-dialog{position:fixed;inset:56px 16px auto auto;margin:0;width:min(360px,calc(100vw - 32px));max-height:calc(100svh - 72px);padding:18px;z-index:8;overflow:auto}
+#settings-dialog h2{font-size:23px;margin:12px 0}
+#settings-dialog .display-options{margin:12px 0}
+#settings-dialog .display-options label{padding:10px 0}
+#settings-dialog p{font-size:11px}
+#settings-dialog .primary-button{padding:12px 16px;margin-top:12px}
+.layout-choices{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:22px 0}
+.layout-choices button{text-align:left;padding:16px;border:1px solid #ffffff20;background:#ffffff03;border-radius:6px}
+.layout-choices button:hover{border-color:var(--mint);background:#79e3cb08}
+.layout-choices strong{display:block;font-size:15px;margin:12px 0 6px}
+.layout-choices strong small{color:var(--mint);font-size:7px;letter-spacing:1px;display:block;margin-top:5px}
+.layout-choices button>span:last-child{font-size:11px;line-height:1.6;color:var(--muted)}
+.layout-preview{display:grid;gap:5px;height:92px;grid-template-columns:1fr 3fr 1fr}
+.layout-preview i{background:#79e3cb25;border:1px solid #79e3cb44;border-radius:2px}
+.preview-focus i:nth-child(2){background:#79e3cb55}
+.preview-classic{grid-template-rows:15px 1fr;grid-template-columns:1fr 2fr 1fr}
+.preview-classic i:first-child{grid-column:1/-1}
+.preview-classic i:nth-child(3){background:#79e3cb55}
+@media(max-width:480px){.layout-choices{gap:10px}.layout-choices button{padding:12px}.layout-preview{height:70px}}
 .display-options{display:grid;gap:0;margin:22px 0}
 .display-options label{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:16px 0;border-top:1px solid var(--line);cursor:pointer}
 .display-options strong{font-size:13px;display:block}
@@ -81,5 +99,4 @@
   .focus-mode .arena-column{max-width:none}
   .focus-mode .shared-dock{margin:8px 0;padding:8px}
   .focus-mode footer{min-height:28px}
-  .focus-button{font-size:8px;padding:4px}
 }
