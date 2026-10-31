@@ -35,10 +35,25 @@
 .display-options small{font-size:11px;line-height:1.6;color:var(--muted);display:block;margin-top:5px}
 .display-options input{width:19px;height:19px;flex-shrink:0;accent-color:var(--mint)}
 .hide-hints .controls{display:none}
+.device{border:0;background:none;padding:0;text-align:left;cursor:pointer}
+.device:hover{color:var(--mint)}
+.controls.controller-controls{display:none}
+.has-controller .controls:not(.controller-controls){display:none}
+.has-controller .controls.controller-controls{display:grid}
+.hide-hints .controls.controller-controls{display:none}
+.setup-steps{padding-left:20px;font-size:12px;line-height:1.8;color:#9eb0b6}
+.setup-steps li{margin-bottom:12px;padding-left:5px}
+.pad-devices{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pad-devices>div{padding:12px;border:1px solid var(--line);border-radius:4px;min-width:0}
+.pad-devices strong{display:block;font-size:10px;letter-spacing:1px;margin-bottom:7px}
+.pad-devices span{font-size:11px;overflow-wrap:anywhere;color:var(--muted)}
+#swap-controllers{color:var(--mint);margin-bottom:18px}
+@media(max-width:700px){.has-controller .controls.controller-controls{display:none}}
 @media(min-width:701px){
   .controls{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding-top:12px}
   .controls>div{justify-content:flex-start;gap:5px;font-size:9px;flex-wrap:wrap}
   .controls>div:first-child{grid-column:1/-1}
+  .player-two .controls:not(.controller-controls)>div:nth-child(2){grid-column:1/-1}
   .controls kbd{height:19px;min-width:19px;font-size:9px}
   .controls .wide-key{min-width:48px;font-size:7px}
   .focus-mode .app{max-width:none;padding:0 20px}

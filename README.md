@@ -42,10 +42,10 @@ relay cadence, scoring, and input mappings are original choices.
 | Move | A / D | ← / → | D-pad or left stick |
 | Soft drop | S | ↓ | Down |
 | Rotate clockwise | W | ↑ | A / Cross |
-| Rotate counterclockwise | Q | / | B / Circle |
+| Rotate counterclockwise | Q | Right Shift | B / Circle |
 | Hard drop | Space | Enter | X / Square |
-| Park / retrieve | C | . | Y / Triangle |
-| Request / confirm exchange | V | , | Either bumper |
+| Park / retrieve | C | Right Ctrl | Y / Triangle |
+| Request / confirm exchange | V | Backspace | Either bumper |
 | Pause / resume | Escape | Escape | Start / Options |
 
 Connect a controller and press a button for browser detection. The **first
@@ -53,6 +53,25 @@ controller plays right**, leaving the left keyboard controls for your partner.
 A second controller plays left. Both keyboard mappings remain active. Standard
 Gamepad API mappings are required; unsupported mappings show a notice.
 Gamepad access requires HTTPS or localhost.
+
+The right player's shortcuts are clustered around the arrow keys and use
+physical key codes, avoiding Danish-layout punctuation. Up rotates clockwise,
+Right Shift counterclockwise. The previous physical slash/period/comma keys
+remain aliases for existing players, but are no longer the displayed defaults.
+
+**Controller setup is visible in the footer and clickable player device labels.**
+Open it for USB/Bluetooth steps, live detected device names, player assignments,
+and a **Switch controller sides** button. Pair Bluetooth controllers in your
+operating system's settings, or connect using a USB data cable; then return to
+the game and press a controller button. The game cannot perform Bluetooth
+pairing or determine whether a detected controller uses USB or Bluetooth.
+Compatibility depends on the device, OS, and browser's standard mapping.
+Connected players see controller button hints instead of keyboard hints.
+If a controller disconnects, the remaining controller keeps its side; the round
+pauses rather than silently handing it to the other player.
+
+Active blocks have no extra ownership borders. P1/P2 labels identify active
+pieces, while outlined ghosts indicate landing positions.
 
 Click **Let's play**, or press a controller's A / Cross / Start, to start.
 Upper-right buttons toggle synthesized sound, enter fullscreen, or open the

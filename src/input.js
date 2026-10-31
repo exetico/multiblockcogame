@@ -3,6 +3,7 @@ export const KEYMAP = {
   KeyW: [0, 'cw'], KeyQ: [0, 'ccw'], Space: [0, 'drop'], KeyC: [0, 'park'], KeyV: [0, 'exchange'],
   ArrowLeft: [1, 'left'], ArrowRight: [1, 'right'], ArrowDown: [1, 'down'],
   ArrowUp: [1, 'cw'], Slash: [1, 'ccw'], Enter: [1, 'drop'], Period: [1, 'park'], Comma: [1, 'exchange'],
+  ShiftRight: [1, 'ccw'], ControlRight: [1, 'park'], Backspace: [1, 'exchange'],
 };
 const CONTINUOUS = new Set(['left', 'right', 'down']);
 
@@ -56,10 +57,23 @@ export class Input {
     if (signature !== this.padSignature) {
       const lost = this.padSlots.some(slot => !standard.some(pad => pad.index === slot.index));
       this.padSignature = signature;
-      this.padSlots = standard.slice(0, 2).map((pad, index) => ({ index: pad.index, player: index === 0 ? 1 : 0 }));
+      this.padSlots = this.padSlots.filter(slot => standard.some(pad => pad.index === slot.index));
+      for (const pad of standard) {
+        if (this.padSlots.length === 2) break;
+        if (this.padSlots.some(slot => slot.index === pad.index)) continue;
+        const player = this.padSlots.some(slot => slot.player === 1) ? 0 : 1;
+        this.padSlots.push({ index: pad.index, player, name: pad.id });
+      }
+      this.reset();
       this.onPads(this.padSlots, lost, pads.some(pad => pad.mapping !== 'standard'));
     }
     return standard;
+  }
+
+  swapPads() {
+    this.padSlots.forEach(slot => { slot.player = 1 - slot.player; });
+    this.reset();
+    this.onPads(this.padSlots, false, false);
   }
 
   update(dt, game) {
