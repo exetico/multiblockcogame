@@ -146,8 +146,10 @@ and the shared park and exchange status move to the right. The header is
 shorter, keyboard hints use compact rows, and the square field uses the
 available screen height (or width on narrower screens). On phones, score and
 shared space remain above/below the board to keep it readable.
-Control hints sit at the very bottom, below footer actions, rather than inside
-the sidebars. Side labels appear once; relay/park notes show only actionable
+Control hints sit at the bottom of each desktop sidebar, beneath score or
+shared park. They do not reserve a row below the board or reduce its height.
+On narrow screens the hints are hidden; the controls dialog remains available.
+Side labels appear once; relay/park notes show only actionable
 messages. The redundant board labels and bottom status bar are removed.
 Next-piece previews expand into the available sidebar height, and the shared
 park is larger. Preview canvases use their displayed size and device pixel
@@ -181,6 +183,22 @@ saving/loading and blocked-action notices. Soft-drop ticks are rate-limited
 and quiet; all effects respect the sound toggle.
 
 ## Score and XP
+
+### Piece selection
+
+Each player has an independent **shuffled seven-piece bag**. A bag contains
+exactly one of every shape; a Fisher-Yates shuffle chooses their order.
+After all seven have been drawn, a fresh bag is shuffled. Preview pieces are
+already drawn and are not reshuffled when parked or exchanged.
+
+This is balanced randomness, not an unrestricted random choice each time:
+each shape appears once per bag, no shape repeats more than twice consecutively,
+and at most twelve other pieces can occur between two appearances of a shape.
+Pairs can repeat across bag boundaries, and runs of the two zigzag shapes can
+reach four. It is intentionally more predictable and less prone to unfair
+droughts than unrestricted draws or a simple repeat-reroll rule. Players' bags
+are separate, so matching pieces on both sides are normal. Saves preserve both
+queues and remaining bags.
 
 | Simultaneous rows | Base score × level | Team XP |
 |---|---:|---:|
