@@ -151,6 +151,40 @@ test('independent seven bags contain every shape once', () => {
   }
 });
 
+test('seven-piece bags bound repeats and droughts across bag seams for both players', () => {
+  let seed = 0x12345678;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 0x100000000;
+  };
+  const game = make({ random });
+  const sequences = game.players.map(player => {
+    const sequence = [player.piece.type];
+    for (let n = 1; n < 7000; n++) {
+      sequence.push(player.queue.shift().type);
+      game.fillQueue(player);
+    }
+    return sequence;
+  });
+  assert.notDeepEqual(sequences[0], sequences[1], 'players have separate draws');
+  for (const sequence of sequences) {
+    let run = 0, previous = null, maxRun = 0, maxGap = 0;
+    const last = new Map();
+    sequence.forEach((type, index) => {
+      run = type === previous ? run + 1 : 1;
+      previous = type;
+      maxRun = Math.max(maxRun, run);
+      if (last.has(type)) maxGap = Math.max(maxGap, index - last.get(type) - 1);
+      last.set(type, index);
+    });
+    for (let n = 0; n < sequence.length; n += 7) {
+      assert.deepEqual(sequence.slice(n, n + 7).sort(), [...TYPES].sort());
+    }
+    assert.equal(maxRun, 2, 'boundary repeats occur, but never three');
+    assert.equal(maxGap, 12, 'the maximum drought is twelve intervening pieces');
+  }
+});
+
 test('four rotations restore every shape and preserve four unique cells', () => {
   const game = make();
   for (const type of TYPES) {

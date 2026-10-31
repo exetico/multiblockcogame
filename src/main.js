@@ -128,8 +128,8 @@ function applyDisplay() {
   $('setting-speed').checked = game.progressiveSpeed;
   renderer.showGrid = saved.grid;
   if (saved.focus && wideScreen.matches) {
-    document.querySelector('.player-one').append(scoreboard);
-    document.querySelector('.player-two').append(dock);
+    document.querySelector('.player-one .control-player').before(scoreboard);
+    document.querySelector('.player-two .control-player').before(dock);
   } else {
     scoreHome.after(scoreboard);
     dockHome.after(dock);

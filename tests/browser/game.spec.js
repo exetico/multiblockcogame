@@ -135,7 +135,11 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     expect(score.x + score.width).toBeLessThan(board.x);
     expect(dock.x).toBeGreaterThan(board.x + board.width);
     for (const id of [0, 1]) {
-      expect((await page.locator(`.control-player[data-player="${id}"] .controls:visible`).boundingBox()).height).toBeLessThan(125);
+      const hints = await page.locator(`.control-player[data-player="${id}"] .controls:visible`).boundingBox();
+      expect(hints.height).toBeLessThan(125);
+      expect(Math.abs(hints.y + hints.height - board.y - board.height)).toBeLessThan(2);
+      const preview = await page.locator(`#next-${id}`).boundingBox();
+      expect(preview.y + preview.height).toBeLessThan(hints.y);
     }
     const pageSize = await page.evaluate(() => ({
       width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
@@ -619,19 +623,24 @@ test('focus previews draw larger, sharp pieces without player labels below activ
   expect(await page.evaluate(() => window.boardLabels.some(label => /^P[12]$/.test(label)))).toBe(false);
 });
 
-test('controls are last, repeated board labels are absent and idle relay notes take no space', async ({ page }) => {
+test('controls anchor to sidebar bottoms without reducing board height', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await begin(page);
   await page.locator('#focus').click();
   await expect(page.locator('.arena-labels, .arena-bottom')).toHaveCount(0);
   await expect(page.locator('#relay-0')).toBeHidden();
   await expect(page.locator('#relay-1')).toBeHidden();
-  await expect(page.locator('.player-panel .controls')).toHaveCount(0);
-  const controls = await page.locator('.control-bank').boundingBox();
-  const footer = await page.locator('footer').boundingBox();
+  await expect(page.locator('.player-panel .keyboard-controls')).toHaveCount(2);
+  await expect(page.locator('footer .controls, .control-bank')).toHaveCount(0);
+  const board = await page.locator('#board').boundingBox();
+  for (const id of [0, 1]) {
+    const controls = await page.locator(`.control-player[data-player="${id}"]`).boundingBox();
+    expect(Math.abs(controls.y + controls.height - board.y - board.height)).toBeLessThan(2);
+    if (id === 0) expect(controls.x + controls.width).toBeLessThan(board.x);
+    else expect(controls.x).toBeGreaterThan(board.x + board.width);
+  }
   const header = await page.locator('.topbar').boundingBox();
   const pause = await page.locator('#pause').boundingBox();
-  expect(controls.y).toBeGreaterThanOrEqual(footer.y + footer.height - 1);
   expect(pause.y).toBeGreaterThanOrEqual(header.y);
   expect(pause.y + pause.height).toBeLessThanOrEqual(header.y + header.height);
   expect(Math.abs(pause.x + pause.width / 2 - 640)).toBeLessThan(2);
@@ -640,6 +649,11 @@ test('controls are last, repeated board labels are absent and idle relay notes t
   await page.keyboard.press('KeyC');
   await expect(page.locator('#relay-0')).toBeVisible();
   await expect(page.locator('#relay-0')).toContainText('Park used');
+  await page.locator('#settings').hover();
+  await page.locator('#setting-hints').uncheck();
+  await page.locator('#settings-done').click();
+  const withoutHints = await page.locator('#board').boundingBox();
+  expect(withoutHints.height).toBe(board.height);
 });
 
 test('hidden header and footer persist, reclaim space and retain pause and menu recovery', async ({ page }) => {
@@ -672,5 +686,5 @@ test('hidden header and footer persist, reclaim space and retain pause and menu 
   await page.locator('#setting-hints').uncheck();
   await page.locator('#settings-done').click();
   await expect(page.locator('footer')).toBeVisible();
-  await expect(page.locator('.control-bank')).toBeHidden();
+  await expect(page.locator('.control-player').first()).toBeHidden();
 });

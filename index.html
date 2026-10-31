@@ -39,6 +39,7 @@
             <div class="next-header"><span class="eyebrow">UP NEXT</span><span class="subtle">3 PIECES</span></div>
             <canvas id="next-0" class="next-canvas" width="180" height="210" aria-label="Player one next pieces"></canvas>
             <div class="relay-note" id="relay-0" hidden></div>
+            <div class="control-player" data-player="0" role="group" aria-label="Left player controls"><div class="controls keyboard-controls" id="keys-0"></div></div>
           </aside>
 
           <div class="arena-column">
@@ -62,6 +63,7 @@
             <div class="next-header"><span class="eyebrow">UP NEXT</span><span class="subtle">3 PIECES</span></div>
             <canvas id="next-1" class="next-canvas" width="180" height="210" aria-label="Player two next pieces"></canvas>
             <div class="relay-note" id="relay-1" hidden></div>
+            <div class="control-player" data-player="1" role="group" aria-label="Right player controls"><div class="controls keyboard-controls" id="keys-1"></div></div>
           </aside>
         </section>
 
@@ -72,10 +74,6 @@
         </section>
       </main>
       <footer><span id="game-status" aria-live="polite">PLAY TOGETHER.</span><span><button id="remap" class="text-button">CONTROLS</button><span class="footer-dot">·</span><button id="controllers" class="text-button">CONTROLLER SETUP <span id="pad-count">0/2</span></button><span class="footer-dot">·</span><button id="restart" class="text-button">NEW GAME</button></span></footer>
-      <section class="control-bank" aria-label="Player controls">
-        <div class="control-player" data-player="0" role="group" aria-label="Left player controls"><div class="controls keyboard-controls" id="keys-0"></div></div>
-        <div class="control-player" data-player="1" role="group" aria-label="Right player controls"><div class="controls keyboard-controls" id="keys-1"></div></div>
-      </section>
     </div>
     <div id="hidden-menu-tools" hidden>
       <button id="restore-menu" class="icon-button" aria-label="Show top menu" title="Show top menu">☰</button>
@@ -100,7 +98,7 @@
       <div class="display-options">
         <label><span><strong>Focus mode</strong><small>A larger field, side-mounted score and shared space on wide screens.</small></span><input id="setting-focus" type="checkbox" /></label>
         <label><span><strong>Grid lines</strong><small>Show cell guides. The shared columns remain highlighted either way.</small></span><input id="setting-grid" type="checkbox" checked /></label>
-        <label><span><strong>Control hints</strong><small>Keyboard or controller hints at the very bottom of the page.</small></span><input id="setting-hints" type="checkbox" checked /></label>
+        <label><span><strong>Control hints</strong><small>Keyboard or controller hints at the bottom of each desktop sidebar.</small></span><input id="setting-hints" type="checkbox" checked /></label>
         <label><span><strong>Top menu</strong><small>Hide the header for more board space. A floating menu button brings it back; Escape still pauses.</small></span><input id="setting-header" type="checkbox" checked /></label>
         <label><span><strong>Footer</strong><small>Hide footer actions. Show it again here. Keyboard hints can be hidden separately.</small></span><input id="setting-footer" type="checkbox" checked /></label>
         <label><span><strong>Progressive speed</strong><small>Faster falling every ten cleared rows. Off keeps a steady starting pace. Changes pause play and apply to this round.</small></span><input id="setting-speed" type="checkbox" checked /></label>

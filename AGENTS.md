@@ -57,8 +57,12 @@ connected controllers' side assignments on disconnect; side switching changes
 input ownership only and takes place while the setup dialog gates gameplay.
 Show controller hints for assigned players and retain keyboard fallback.
 Active pieces have no player-colored ownership borders; preserve landing ghosts.
-Keep control hints in `.control-bank` at the bottom of the page; assigned
+Keep control hints in `.control-player` at the bottom of each desktop sidebar; assigned
 controller classes must update both sidebar and corresponding `.control-player`.
+Insert score/shared dock before the controls. Focus sidebars use size containment
+so their contents cannot enlarge the board row; previews flex into remaining
+space. Hints must not consume a separate page row or reduce board height.
+Hide hints on narrow screens; keep remapping accessible through the footer.
 Pause lives in the header centre, not below the board. Hide-header/footer
 preferences persist and reclaim space; hidden headers must retain floating
 restore-menu and pause buttons. Hide decorative relay notes unless actionable.
@@ -86,6 +90,11 @@ Engine events drive synthesized sound; soft-drop cues are rate-limited.
 Do not play storage-success cues before writes succeed.
 Browser tests must wait for queued input to reach the HUD before capturing
 a baseline, and pause before asserting an unchanged stage.
+
+Piece selection uses independent Fisher-Yates seven-piece bags. Preserve one
+of each shape per bag, maximum identical run of two, and maximum twelve-piece
+gap between occurrences. Queues contain already-drawn pieces; park/exchange
+must not reroll them. Persist remaining bags and queues with stages.
 
 Bindings are data. Never hardcode keys or button indexes in gameplay, hints,
 help (`[data-bind]`), or toasts; render them from the current bindings.
