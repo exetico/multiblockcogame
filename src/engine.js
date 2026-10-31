@@ -46,9 +46,10 @@ export function cells(piece) {
 }
 
 export class Game {
-  constructor({ random = Math.random, relays = true } = {}) {
+  constructor({ random = Math.random, relays = true, progressiveSpeed = true } = {}) {
     this.random = random;
     this.relays = relays;
+    this.progressiveSpeed = progressiveSpeed;
     this.board = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(null));
     this.players = [0, 1].map(id => ({
       id, piece: null, queue: [], bag: [], count: 0, canHold: true,
@@ -72,7 +73,55 @@ export class Game {
 
   emit(type, data = {}) { this.events.push({ type, ...data }); }
   drainEvents() { return this.events.splice(0); }
-  get gravityInterval() { return Math.max(65, 900 * Math.pow(0.79, this.level - 1)); }
+  get gravityInterval() { return this.progressiveSpeed ? Math.max(65, 900 * Math.pow(0.79, this.level - 1)) : 900; }
+
+  snapshot() {
+    if (this.over) throw new Error('Only an unfinished round can be saved.');
+    return JSON.parse(JSON.stringify({
+      version: 1, board: this.board, players: this.players, hold: this.hold,
+      exchangeRequest: this.exchangeRequest, score: this.score, xp: this.xp,
+      lines: this.lines, level: this.level, combo: this.combo,
+      backToBack: this.backToBack, relays: this.relays, progressiveSpeed: this.progressiveSpeed,
+    }));
+  }
+
+  static restore(data, { random = Math.random } = {}) {
+    const fail = () => { throw new Error('This stage is damaged or uses an unsupported save format.'); };
+    const integer = (value, min, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= min && value <= max;
+    const boolean = value => typeof value === 'boolean';
+    const item = value => value && TYPES.includes(value.type) &&
+      (value.relayOwner === null || integer(value.relayOwner, 0, 1));
+    const piece = value => item(value) && integer(value.x, -4, WIDTH) &&
+      integer(value.y, -2, HEIGHT - 1) && integer(value.rotation, 0, 3) && boolean(value.lastRotate);
+    if (!data || data.version !== 1 || !boolean(data.relays) || !boolean(data.progressiveSpeed) ||
+      !integer(data.score, 0) || !integer(data.xp, 0) || !integer(data.lines, 0) ||
+      data.level !== 1 + Math.floor(data.lines / 10) || !integer(data.combo, -1, data.lines) ||
+      !boolean(data.backToBack) || !(data.hold === null || item(data.hold)) ||
+      !(data.exchangeRequest === null || integer(data.exchangeRequest, 0, 1)) ||
+      !Array.isArray(data.board) || data.board.length !== HEIGHT ||
+      !data.board.every(row => Array.isArray(row) && row.length === WIDTH &&
+        row.every(cell => cell === null || (cell && TYPES.includes(cell.type) && integer(cell.owner, 0, 1)))) ||
+      !Array.isArray(data.players) || data.players.length !== 2 ||
+      !data.players.every((player, id) => player && player.id === id && piece(player.piece) &&
+        Array.isArray(player.queue) && player.queue.length === 5 && player.queue.every(item) &&
+        Array.isArray(player.bag) && player.bag.length <= 7 && player.bag.every(type => TYPES.includes(type)) &&
+        new Set(player.bag).size === player.bag.length && integer(player.count, 6) && boolean(player.canHold) &&
+        Number.isFinite(player.gravity) && player.gravity >= 0 && player.gravity <= 1000 &&
+        Number.isFinite(player.lockTime) && player.lockTime >= 0 && player.lockTime < 500 &&
+        integer(player.resets, 0, 15))) fail();
+    const copy = JSON.parse(JSON.stringify(data));
+    const game = Object.create(Game.prototype);
+    Object.assign(game, {
+      random, board: copy.board, players: copy.players, hold: copy.hold,
+      exchangeRequest: copy.exchangeRequest, score: copy.score, xp: copy.xp,
+      lines: copy.lines, level: copy.level, combo: copy.combo,
+      backToBack: copy.backToBack, relays: copy.relays, progressiveSpeed: copy.progressiveSpeed,
+      over: false, events: [],
+    });
+    if (!game.players.every(player => game.fits(player.piece, player.id)) ||
+      game.board.some(row => row.every(Boolean))) fail();
+    return game;
+  }
 
   fillQueue(player) {
     while (player.queue.length < 5) {
@@ -123,7 +172,10 @@ export class Game {
     if (!this.fits(candidate, id)) return false;
     const wasGrounded = this.grounded(id);
     player.piece = candidate;
-    if (soft && dy > 0) this.score += dy;
+    if (soft && dy > 0) {
+      this.score += dy;
+      this.emit('soft-drop', { id });
+    }
     if (dx && wasGrounded && player.resets < 15) {
       player.lockTime = 0;
       player.resets++;
@@ -165,6 +217,7 @@ export class Game {
     if (this.over) return;
     const player = this.players[id];
     const landing = this.ghost(id);
+    this.emit('drop', { id });
     this.score += (landing.y - player.piece.y) * 2;
     player.piece = { ...landing, lastRotate: landing.lastRotate && landing.y === player.piece.y };
     if (landing.relayOwner !== null) {
@@ -261,6 +314,7 @@ export class Game {
       const xp = [0, 100, 300, 600, 1000][count];
       this.xp += xp;
       this.lines += count;
+      const previousLevel = this.level;
       this.level = 1 + Math.floor(this.lines / 10);
       this.backToBack = difficult;
       this.board = this.board.filter((_, y) => !cleared.includes(y));
@@ -270,7 +324,7 @@ export class Game {
       const partner = this.players[1 - id];
       while (!this.fits(partner.piece, partner.id) && partner.piece.y > -2) partner.piece.y--;
       if (!this.fits(partner.piece, partner.id)) this.end(partner.id);
-      this.emit('clear', { count, xp, spin, combo: this.combo, b2b, rows: cleared });
+      this.emit('clear', { count, xp, spin, combo: this.combo, b2b, rows: cleared, levelUp: this.level > previousLevel });
     } else {
       this.combo = -1;
       this.emit('lock', { id, spin });

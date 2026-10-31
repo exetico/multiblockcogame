@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Input, KEYMAP, DEFAULT_BINDINGS, cloneBindings, normalizeBindings, assignBinding, clearBinding, keyLabel, buttonLabel, isReservedKey } from '../src/input.js';
+import { Input, KEYMAP, DEFAULT_BINDINGS, cloneBindings, normalizeBindings, migrateBindings, assignBinding, clearBinding, keyLabel, buttonLabel, isReservedKey } from '../src/input.js';
 
 test('sub-frame key taps are delivered once, in order across players', () => {
   const handlers = {};
@@ -20,7 +20,7 @@ test('sub-frame key taps are delivered once, in order across players', () => {
       exchange: id => calls.push(['exchange', id]),
       hardDrop: id => calls.push(['drop', id]),
     };
-    for (const code of ['Period', 'KeyV', 'Comma', 'Space', 'Enter']) {
+    for (const code of ['KeyK', 'KeyV', 'KeyL', 'Space', 'ArrowUp']) {
       handlers.keydown({ code, repeat: false, target: { closest: () => null }, preventDefault() {} });
       handlers.keyup({ code });
     }
@@ -39,11 +39,15 @@ test('sub-frame key taps are delivered once, in order across players', () => {
   }
 });
 
-test('right-player shortcuts use nearby non-punctuation physical keys', () => {
-  assert.deepEqual(KEYMAP.ShiftRight, [1, 'ccw']);
-  assert.deepEqual(KEYMAP.ArrowUp, [1, 'cw']);
-  assert.deepEqual(KEYMAP.ControlRight, [1, 'park']);
-  assert.deepEqual(KEYMAP.Backspace, [1, 'exchange']);
+test('defaults use paired rotation keys, Up for hard drop and K/L for park/trade', () => {
+  assert.deepEqual(KEYMAP.KeyQ, [0, 'ccw']);
+  assert.deepEqual(KEYMAP.KeyE, [0, 'cw']);
+  assert.equal(KEYMAP.KeyW, undefined);
+  assert.deepEqual(KEYMAP.Comma, [1, 'ccw']);
+  assert.deepEqual(KEYMAP.Period, [1, 'cw']);
+  assert.deepEqual(KEYMAP.ArrowUp, [1, 'drop']);
+  assert.deepEqual(KEYMAP.KeyK, [1, 'park']);
+  assert.deepEqual(KEYMAP.KeyL, [1, 'exchange']);
   assert.deepEqual(KEYMAP.Enter, [1, 'drop']);
   assert.equal(KEYMAP.ShiftLeft, undefined);
 });
@@ -79,13 +83,13 @@ test('controller assignments survive partner disconnection and can switch sides'
 });
 
 test('assigning a key in use swaps it, and adding an extra key moves it', () => {
-  const swapped = assignBinding(DEFAULT_BINDINGS, 'keys', [0, 'cw', 0], 'ArrowUp');
+  const swapped = assignBinding(DEFAULT_BINDINGS, 'keys', [0, 'cw', 0], 'Period');
   assert.equal(swapped.moved, '1:cw');
-  assert.deepEqual(swapped.bindings.keys[0].cw, ['ArrowUp']);
-  assert.deepEqual(swapped.bindings.keys[1].cw, ['KeyW']);
-  assert.deepEqual(DEFAULT_BINDINGS.keys[0].cw, ['KeyW'], 'defaults are never mutated');
-  const extra = assignBinding(DEFAULT_BINDINGS, 'keys', [0, 'cw', 1], 'KeyE');
-  assert.deepEqual(extra.bindings.keys[0].cw, ['KeyW', 'KeyE']);
+  assert.deepEqual(swapped.bindings.keys[0].cw, ['Period']);
+  assert.deepEqual(swapped.bindings.keys[1].cw, ['KeyE']);
+  assert.deepEqual(DEFAULT_BINDINGS.keys[0].cw, ['KeyE'], 'defaults are never mutated');
+  const extra = assignBinding(DEFAULT_BINDINGS, 'keys', [0, 'cw', 1], 'KeyR');
+  assert.deepEqual(extra.bindings.keys[0].cw, ['KeyE', 'KeyR']);
   assert.equal(extra.moved, null);
   const stolen = assignBinding(DEFAULT_BINDINGS, 'keys', [0, 'cw', 1], 'KeyQ');
   assert.deepEqual(stolen.bindings.keys[0].ccw, [], 'an action may become unbound and is reported in the UI');
@@ -111,7 +115,7 @@ test('custom bindings drive gameplay for keyboard and controller', () => {
     const game = { move() {}, rotate() {}, park: id => calls.push(['park', id]), exchange() {}, hardDrop: id => calls.push(['drop', id]) };
     input.update(16, game);
     handlers.keydown({ code: 'KeyL', repeat: false, target: { closest: () => null }, preventDefault() {} });
-    handlers.keydown({ code: 'ControlRight', repeat: false, target: { closest: () => null }, preventDefault() {} });
+    handlers.keydown({ code: 'KeyK', repeat: false, target: { closest: () => null }, preventDefault() {} });
     buttons[2].pressed = true;
     input.update(16, game);
     assert.deepEqual(calls, [['park', 1]], 'old key and old button no longer act');
@@ -123,6 +127,21 @@ test('custom bindings drive gameplay for keyboard and controller', () => {
     if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor);
     else delete globalThis.navigator;
   }
+});
+
+test('old default keyboards migrate, but custom keyboards and controller bindings are preserved', () => {
+  const old = cloneBindings();
+  old.keys[0].cw = ['KeyW'];
+  Object.assign(old.keys[1], {
+    cw: ['ArrowUp'], ccw: ['ShiftRight', 'Slash'], drop: ['Enter'],
+    park: ['ControlRight', 'Period'], exchange: ['Backspace', 'Comma'],
+  });
+  old.pad = assignBinding(old, 'pad', ['drop', 0], 7).bindings.pad;
+  const migrated = migrateBindings(old);
+  assert.deepEqual(migrated.keys, cloneBindings().keys);
+  assert.deepEqual(migrated.pad, old.pad);
+  old.keys[0].park = ['KeyB'];
+  assert.deepEqual(migrateBindings(old), old);
 });
 
 test('stored bindings are validated; reserved, duplicate or malformed data falls back', () => {

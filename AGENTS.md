@@ -47,15 +47,45 @@ for 1 / 2 / 3 / 4 rows. Score is separate. Preserve lifetime XP without
 double-crediting the current game, and surface storage failures visibly.
 There are no networking, server, account, or runtime external dependencies.
 
-Right-player defaults use physical ArrowUp/ShiftRight/Enter/ControlRight/
-Backspace keys, not punctuation-dependent labels. Keep old punctuation aliases
-for compatibility. Controller setup must be discoverable in the UI and explain
+Defaults use Q/E rotation on the left; Comma/Period rotation, ArrowUp/Enter
+hard drop, KeyK park and KeyL exchange on the right. Preserve custom mappings;
+`migrateBindings` only upgrades an exact match of both old default keyboards.
+Controller setup must be discoverable in the UI and explain
 OS-level Bluetooth pairing and browser standard-mapping requirements. Never
 claim the browser pairs devices or knows their connection transport. Preserve
 connected controllers' side assignments on disconnect; side switching changes
 input ownership only and takes place while the setup dialog gates gameplay.
 Show controller hints for assigned players and retain keyboard fallback.
 Active pieces have no player-colored ownership borders; preserve landing ghosts.
+Keep control hints in `.control-bank` at the bottom of the page; assigned
+controller classes must update both sidebar and corresponding `.control-player`.
+Pause lives in the header centre, not below the board. Hide-header/footer
+preferences persist and reclaim space; hidden headers must retain floating
+restore-menu and pause buttons. Hide decorative relay notes unless actionable.
+Do not draw player labels beneath active pieces. Preview canvases measure
+their rendered dimensions and device pixel ratio; observe their sizes alongside
+the board so layout changes redraw previews without blurring or clipping.
+
+Progressive speed defaults on and depends on cleared rows, not wall-clock
+time. Off keeps gravity at 900 ms; level, score and XP rules stay unchanged.
+Settings changes pause, apply to the current game and persist for new games.
+
+`Game#snapshot` and `Game.restore` implement versioned, DOM-free stage saves.
+Validate all board, piece, queue/bag, timer and scoring fields and legal active
+piece positions before replacing a game. Restore methods without consuming
+random draws, and do not persist events, input state or transient effects.
+Three manual slots live under `common-ground-stages-v1`, separate from progress.
+Write storage successfully before changing a slot in memory. Report corrupt
+slots and storage errors visibly. Loaded games are paused; set `creditedXP`
+to their existing XP to avoid crediting it again. Save/load preserves engine
+timers, hold limits, relays, pending exchanges and speed mode.
+Every dialog gates both input and ticking. New Game pauses even a zero-score
+unfinished round and uses two explicit confirmations; cancel never resumes.
+Loading over a live round, overwriting and deleting slots require confirmation.
+Engine events drive synthesized sound; soft-drop cues are rate-limited.
+Do not play storage-success cues before writes succeed.
+Browser tests must wait for queued input to reach the HUD before capturing
+a baseline, and pause before asserting an unchanged stage.
 
 Bindings are data. Never hardcode keys or button indexes in gameplay, hints,
 help (`[data-bind]`), or toasts; render them from the current bindings.

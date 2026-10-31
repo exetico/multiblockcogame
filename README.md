@@ -41,11 +41,11 @@ relay cadence, scoring, and input mappings are original choices.
 |---|---|---|---|
 | Move | A / D | ← / → | D-pad or left stick |
 | Soft drop | S | ↓ | Down |
-| Rotate clockwise | W | ↑ | A / Cross |
-| Rotate counterclockwise | Q | Right Shift | B / Circle |
-| Hard drop | Space | Enter | X / Square |
-| Park / retrieve | C | Right Ctrl | Y / Triangle |
-| Request / confirm exchange | V | Backspace | Either bumper |
+| Rotate clockwise | E | . | A / Cross |
+| Rotate counterclockwise | Q | , | B / Circle |
+| Hard drop | Space | ↑ / Enter | X / Square |
+| Park / retrieve | C | K | Y / Triangle |
+| Request / confirm exchange | V | L | Either bumper |
 | Pause / resume | Escape | Escape | Start / Options |
 
 These are the defaults. **Every key and controller button can be changed** under
@@ -58,10 +58,10 @@ A second controller plays left. Both keyboard mappings remain active. Standard
 Gamepad API mappings are required; unsupported mappings show a notice.
 Gamepad access requires HTTPS or localhost.
 
-The right player's shortcuts are clustered around the arrow keys and use
-physical key codes, avoiding Danish-layout punctuation. Up rotates clockwise,
-Right Shift counterclockwise. The previous physical slash/period/comma keys
-remain aliases for existing players, but are no longer the displayed defaults.
+Rotation defaults are paired: Q/E on the left keyboard and comma/period on
+the right. Up instantly drops the right player's piece; K parks and L trades.
+Keys use physical positions. Existing custom mappings are preserved; unchanged
+old default keyboards are upgraded to these defaults automatically.
 
 **Controller setup is visible in the footer and clickable player device labels.**
 Open it for USB/Bluetooth steps, live detected device names, player assignments,
@@ -74,14 +74,40 @@ Connected players see controller button hints instead of keyboard hints.
 If a controller disconnects, the remaining controller keeps its side; the round
 pauses rather than silently handing it to the other player.
 
-Active blocks have no extra ownership borders. P1/P2 labels identify active
-pieces, while outlined ghosts indicate landing positions.
+Active blocks have no ownership borders or player labels.
+Outlined ghosts indicate landing positions.
 
 Click **Let's play**, or press a controller's A / Cross / Start, to start.
 Upper-right buttons toggle synthesized sound, enter fullscreen, or open the
 field guide. Leaving the tab, losing window focus, opening help, or disconnecting
 a controller pauses play. Resume when both players are ready. Some keyboards
 cannot register many simultaneous keys; controllers avoid keyboard ghosting.
+
+## Pause, new game and saved stages
+
+The prominent **Pause** button in the header centre,
+Escape, and the controller pause button all pause/resume. Opening
+settings, help or the memory card pauses immediately. Closing a panel never
+resumes automatically.
+
+**New Game** pauses an unfinished round and asks twice before discarding it.
+Cancel or Escape keeps the round paused. Save it first if you want to return;
+new games never erase save slots, best score or lifetime XP.
+
+The **memory-card icon** in the toolbar opens **three manual save slots**.
+Save a paused round to an empty slot, or confirm before overwriting a slot.
+Each card shows its timestamp, score, rows, level and speed mode. Load restores
+the board, both pieces (position/rotation), queues/bags, shared park, exchange
+request, relay state, timers, score and XP. It stays paused until you resume.
+Replacing an unfinished round or deleting a slot requires confirmation.
+Finished rounds cannot be saved.
+
+Stages are stored locally under `common-ground-stages-v1`, separately from
+preferences/progress. They survive reloads in this browser on this device;
+they are not cloud saves or automatic checkpoints. Clearing site data removes
+them. Unreadable saves and storage failures are reported without loading a
+broken stage or claiming that a failed write succeeded. Loading does not
+award a saved stage's existing XP again; subsequent clears earn new XP.
 
 ## Custom controls
 
@@ -120,15 +146,39 @@ and the shared park and exchange status move to the right. The header is
 shorter, keyboard hints use compact rows, and the square field uses the
 available screen height (or width on narrower screens). On phones, score and
 shared space remain above/below the board to keep it readable.
+Control hints sit at the very bottom, below footer actions, rather than inside
+the sidebars. Side labels appear once; relay/park notes show only actionable
+messages. The redundant board labels and bottom status bar are removed.
+Next-piece previews expand into the available sidebar height, and the shared
+park is larger. Preview canvases use their displayed size and device pixel
+ratio so blocks stay sharp rather than stretching a small image.
 
-**Hover over the gear** to open the display panel: focus mode, grid lines, and
-keyboard hints. Move away to close it. Keyboard focus also opens the panel;
+**Hover over the gear** to open settings: focus mode, grid lines,
+control hints, header/footer visibility and progressive speed. Move away to close it. Keyboard focus also opens the panel;
 touch users can tap the gear. Escape, Done, or clicking outside closes it.
 Turning grid lines off keeps the two shared columns highlighted. Preferences
 persist in this browser and do not alter the **12 × 12 rules**, reset your
 round, or change XP/scoring. Opening settings pauses an active game; closing
 them leaves it paused until you resume. The toolbar layout toggle itself does
 not pause or restart play. Fullscreen remains a separate option.
+
+Hide **Top menu** or **Footer** independently in settings to recover board space.
+A floating menu button restores a hidden header, and a floating pause button
+remains usable alongside Escape/controllers. Restore the footer in settings.
+These preferences survive reloads. Control hints can be hidden separately.
+
+**Progressive speed is on by default.** Falling gets faster every ten cleared
+rows, not with elapsed time: the interval starts at 900 ms, multiplies by 0.79
+each level, and stops accelerating at 65 ms. Turn it off in settings for a
+steady 900 ms pace. Changing it pauses play and applies to the current round;
+the preference also applies to new rounds and is included in saved stages.
+Levels and score multipliers still advance normally, and XP is unchanged.
+Soft/hard drop and the 500 ms lock delay work the same in either mode.
+
+Synthesized sound cues cover movement, rotation, soft/hard drop, locking,
+parking, exchange requests/trades, row clears, level-ups, pause/resume,
+saving/loading and blocked-action notices. Soft-drop ticks are rate-limited
+and quiet; all effects respect the sound toggle.
 
 ## Score and XP
 

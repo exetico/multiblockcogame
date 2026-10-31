@@ -4,6 +4,7 @@ export class Sound {
     this.context = null;
     this.onError = onError;
     this.lastMove = 0;
+    this.lastSoftDrop = 0;
   }
 
   unlock() {
@@ -60,6 +61,17 @@ export class Sound {
       case 'start': [262, 330, 392, 523].forEach((note, i) => this.tone(note, i * 0.08, 0.25)); break;
       case 'over': [330, 294, 247, 165].forEach((note, i) => this.tone(note, i * 0.16, 0.35, 0.05, 'triangle')); break;
       case 'pause': this.tone(300, 0, 0.15, 0.025, 'sine', 200); break;
+      case 'resume': this.tone(200, 0, 0.15, 0.025, 'sine', 400); break;
+      case 'drop': this.tone(520, 0, 0.1, 0.035, 'triangle', 90); break;
+      case 'soft-drop':
+        if (performance.now() - this.lastSoftDrop < 90) return;
+        this.lastSoftDrop = performance.now();
+        this.tone(120, 0, 0.035, 0.01, 'triangle');
+        break;
+      case 'notice': this.tone(210, 0, 0.08, 0.025); this.tone(175, 0.1, 0.1, 0.025); break;
+      case 'level': [523, 659, 784, 1047].forEach((note, i) => this.tone(note, 0.35 + i * 0.09, 0.25, 0.035, 'triangle')); break;
+      case 'save': [392, 523, 659].forEach((note, i) => this.tone(note, i * 0.07, 0.16, 0.025)); break;
+      case 'load': [659, 523, 784].forEach((note, i) => this.tone(note, i * 0.07, 0.18, 0.025)); break;
     }
   }
 }
