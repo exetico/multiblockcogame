@@ -14,6 +14,16 @@ Keep branding, visuals, and synthesized audio original.
 - `src/main.js`: lifecycle, persistence, dialogs, fullscreen, and engine events.
 - `src/style.css`: responsive square field and reduced-motion support.
 
+Focus mode is display-only: never change engine dimensions or restart a round
+when switching layouts. `applyDisplay()` in `main.js` moves the existing score
+and shared dock nodes into sidebars above 700px, restoring them through DOM
+anchors on smaller screens or when focus is disabled. Preserve IDs, handlers,
+and accessibility; do not duplicate HUD nodes. Canvas resize is handled by
+the renderer's ResizeObserver. Grid visibility must not hide overlap markers.
+Both settings and help dialogs must gate keyboard/gamepad gameplay and pause
+an active round. Persist display preferences alongside existing progress with
+validated defaults for older saves.
+
 ## Required invariants
 
 The user explicitly specified **12 columns by 12 rows**, with **two shared

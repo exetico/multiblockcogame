@@ -32,6 +32,7 @@ export class Renderer {
     this.flashUntil = 0;
     this.flashRows = [];
     this.lastGame = null;
+    this.showGrid = true;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.resize = new ResizeObserver(() => this.measure());
     this.resize.observe(board);
@@ -73,8 +74,10 @@ export class Renderer {
     ctx.lineWidth = 0.5;
     ctx.strokeStyle = '#77929320';
     ctx.beginPath();
-    for (let x = 1; x < WIDTH; x++) { ctx.moveTo(x * sx, 0); ctx.lineTo(x * sx, h); }
-    for (let y = 1; y < HEIGHT; y++) { ctx.moveTo(0, y * sy); ctx.lineTo(w, y * sy); }
+    if (this.showGrid) {
+      for (let x = 1; x < WIDTH; x++) { ctx.moveTo(x * sx, 0); ctx.lineTo(x * sx, h); }
+      for (let y = 1; y < HEIGHT; y++) { ctx.moveTo(0, y * sy); ctx.lineTo(w, y * sy); }
+    }
     ctx.stroke();
     ctx.strokeStyle = '#a1d9cb40';
     ctx.setLineDash([3, 5]);

@@ -15,6 +15,8 @@
         <a class="brand" href="./" aria-label="Common Ground home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>COMMON<span class="brand-light">GROUND</span></span></a>
         <span class="edition"><span class="status-dot"></span> LOCAL CO-OP <span class="edition-extra">/ TWO PLAYERS, ONE TEAM</span></span>
         <nav class="utility" aria-label="Game settings">
+          <button id="focus" class="text-button focus-button" aria-label="Toggle focus mode" aria-pressed="false" title="Larger playfield">FOCUS</button>
+          <button id="settings" class="icon-button" aria-label="Display settings" title="Display settings">⚙</button>
           <button id="sound" class="icon-button" aria-label="Mute sound" title="Toggle sound">♪</button>
           <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen" title="Fullscreen">⛶</button>
           <button id="help" class="icon-button" aria-label="How to play" title="How to play">?</button>
@@ -77,13 +79,26 @@
       <footer><span>FALL TOGETHER. RISE TOGETHER.</span><span id="controller-status">KEYBOARD + GAMEPADS <span class="footer-dot">·</span> <button id="restart" class="text-button">NEW GAME</button></span></footer>
     </div>
 
+    <dialog id="settings-dialog">
+      <div class="dialog-heading"><span class="eyebrow">MAKE ROOM TO PLAY</span><button id="close-settings" class="icon-button" aria-label="Close display settings">×</button></div>
+      <h2>Less distraction.<br /><em>More common ground.</em></h2>
+      <p>Display changes only. The field stays 12 × 12, with two shared columns. Your round and earned progress stay intact.</p>
+      <div class="display-options">
+        <label><span><strong>Focus mode</strong><small>A larger field, side-mounted score and shared space on wide screens.</small></span><input id="setting-focus" type="checkbox" /></label>
+        <label><span><strong>Grid lines</strong><small>Show cell guides. The shared columns remain highlighted either way.</small></span><input id="setting-grid" type="checkbox" checked /></label>
+        <label><span><strong>Keyboard hints</strong><small>Compact controls below each player's next pieces.</small></span><input id="setting-hints" type="checkbox" checked /></label>
+      </div>
+      <p class="help-fineprint">Preferences stay in this browser. Opening settings pauses a running game; close them and resume when both players are ready. Focus mode works independently of browser fullscreen.</p>
+      <button id="settings-done" class="primary-button">DONE <span>↗</span></button>
+    </dialog>
+
     <dialog id="help-dialog">
       <div class="dialog-heading"><span class="eyebrow">THE FIELD GUIDE</span><button id="close-help" class="icon-button" aria-label="Close instructions">×</button></div>
       <h2>A shared space.<br /><em>A shared win.</em></h2>
       <p>Fill complete horizontal rows across the <strong>entire 12 × 12 field</strong>. Each player has a seven-column reach; the <strong>two glowing center columns belong to both of you</strong>. Pieces cannot pass through each other. If either side tops out, the round ends for the team.</p>
       <div class="help-grid"><section><h3>01 / Park it</h3><p>There’s one shared park slot. Press <kbd>C</kbd> / <kbd>.</kbd> to store your piece or take the parked one. Once per active piece, until you lock it.</p></section><section><h3>02 / Pass it</h3><p>Press <kbd>V</kbd> / <kbd>,</kbd> to request a trade; your partner presses theirs to confirm. Both pieces respawn on their new side. Press again to cancel.</p></section><section><h3>03 / Relay pieces</h3><p>Every tenth piece per player is marked <strong>⇄</strong>. It must change hands before it can lock. Trade it, or park it for your partner. Optional before a new game.</p></section><section><h3>04 / Make it count</h3><p>Clear 1 / 2 / 3 / 4 rows at once for <strong>100 / 300 / 600 / 1,000 XP</strong>. Score also rewards spins, combos, back-to-back big clears, and drops. Every ten rows raises the level.</p></section></div>
       <section class="gamepad-help"><h3>Controllers welcome.</h3><p>Connect a standard controller and press a button. The first controller plays <strong>right</strong>; the second plays <strong>left</strong>. Keyboards stay active.</p><div class="pad-controls"><span><b>D-pad / stick</b> Move / soft drop</span><span><b>A / Cross</b> Rotate clockwise</span><span><b>B / Circle</b> Rotate counterclockwise</span><span><b>X / Square</b> Hard drop</span><span><b>Y / Triangle</b> Park</span><span><b>LB / RB</b> Exchange</span><span><b>Start / Options</b> Pause / resume</span></div></section>
-      <p class="help-fineprint">Ghost outlines show the landing position. Escape pauses. Sound is synthesized on your device. Best score and lifetime team XP stay in this browser. A keyboard or controller is required; touch controls are not included.</p>
+      <p class="help-fineprint">Ghost outlines show the landing position. Escape pauses. Use FOCUS for a larger field and the gear for display settings. Sound is synthesized on your device. Best score and lifetime team XP stay in this browser. A keyboard or controller is required; touch controls are not included.</p>
       <button id="help-done" class="primary-button">GOT IT <span>↗</span></button>
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>
