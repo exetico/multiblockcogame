@@ -172,7 +172,10 @@ export class Game {
     if (!this.fits(candidate, id)) return false;
     const wasGrounded = this.grounded(id);
     player.piece = candidate;
-    if (soft && dy > 0) this.score += dy;
+    if (soft && dy > 0) {
+      this.score += dy;
+      this.emit('soft-drop', { id });
+    }
     if (dx && wasGrounded && player.resets < 15) {
       player.lockTime = 0;
       player.resets++;
@@ -214,6 +217,7 @@ export class Game {
     if (this.over) return;
     const player = this.players[id];
     const landing = this.ghost(id);
+    this.emit('drop', { id });
     this.score += (landing.y - player.piece.y) * 2;
     player.piece = { ...landing, lastRotate: landing.lastRotate && landing.y === player.piece.y };
     if (landing.relayOwner !== null) {
@@ -310,6 +314,7 @@ export class Game {
       const xp = [0, 100, 300, 600, 1000][count];
       this.xp += xp;
       this.lines += count;
+      const previousLevel = this.level;
       this.level = 1 + Math.floor(this.lines / 10);
       this.backToBack = difficult;
       this.board = this.board.filter((_, y) => !cleared.includes(y));
@@ -319,7 +324,7 @@ export class Game {
       const partner = this.players[1 - id];
       while (!this.fits(partner.piece, partner.id) && partner.piece.y > -2) partner.piece.y--;
       if (!this.fits(partner.piece, partner.id)) this.end(partner.id);
-      this.emit('clear', { count, xp, spin, combo: this.combo, b2b, rows: cleared });
+      this.emit('clear', { count, xp, spin, combo: this.combo, b2b, rows: cleared, levelUp: this.level > previousLevel });
     } else {
       this.combo = -1;
       this.emit('lock', { id, spin });

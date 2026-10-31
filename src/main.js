@@ -1,6 +1,6 @@
 import { Game } from './engine.js';
 import { Renderer } from './render.js';
-import { Input, ACTIONS, PAD_ACTIONS, ACTION_LABELS, DEFAULT_BINDINGS, cloneBindings, normalizeBindings, assignBinding, clearBinding, keyLabel, buttonLabel, isReservedKey } from './input.js';
+import { Input, ACTIONS, PAD_ACTIONS, ACTION_LABELS, DEFAULT_BINDINGS, cloneBindings, migrateBindings, assignBinding, clearBinding, keyLabel, buttonLabel, isReservedKey } from './input.js';
 import { Sound } from './audio.js';
 
 const $ = id => document.getElementById(id);
@@ -12,7 +12,7 @@ function toast(message) {
   toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4200);
 }
 
-const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, progressiveSpeed: true, focus: true, grid: true, hints: true, layoutChosen: false, controls: null };
+const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, progressiveSpeed: true, focus: true, grid: true, hints: true, header: true, footer: true, layoutChosen: false, controls: null };
 let saved = { ...defaults };
 let storageAvailable = true;
 try {
@@ -28,8 +28,10 @@ try {
       focus: typeof parsed.focus === 'boolean' ? parsed.focus : true,
       grid: typeof parsed.grid === 'boolean' ? parsed.grid : true,
       hints: typeof parsed.hints === 'boolean' ? parsed.hints : true,
+      header: typeof parsed.header === 'boolean' ? parsed.header : true,
+      footer: typeof parsed.footer === 'boolean' ? parsed.footer : true,
       layoutChosen: parsed.layoutChosen === true,
-      controls: parsed.controls ? normalizeBindings(parsed.controls) : null,
+      controls: parsed.controls ? migrateBindings(parsed.controls) : null,
     };
   }
 } catch (error) {
@@ -114,10 +116,15 @@ const isDialogOpen = () => document.querySelector('dialog[open]') !== null;
 function applyDisplay() {
   document.body.classList.toggle('focus-mode', saved.focus);
   document.body.classList.toggle('hide-hints', !saved.hints);
+  document.body.classList.toggle('hide-header', !saved.header);
+  document.body.classList.toggle('hide-footer', !saved.footer);
+  $('hidden-menu-tools').hidden = saved.header;
   $('focus').setAttribute('aria-pressed', String(saved.focus));
   $('setting-focus').checked = saved.focus;
   $('setting-grid').checked = saved.grid;
   $('setting-hints').checked = saved.hints;
+  $('setting-header').checked = saved.header;
+  $('setting-footer').checked = saved.footer;
   $('setting-speed').checked = game.progressiveSpeed;
   renderer.showGrid = saved.grid;
   if (saved.focus && wideScreen.matches) {
@@ -136,9 +143,10 @@ function updateOverlay() {
   $('overlay').hidden = active;
   $('pause').disabled = state === 'ready' || state === 'over';
   $('pause').innerHTML = `${state === 'paused' ? 'RESUME' : 'PAUSE'} <kbd>ESC</kbd>`;
-  $('pause-top').disabled = $('pause').disabled;
-  $('pause-top').setAttribute('aria-label', state === 'paused' ? 'Resume game' : 'Pause game');
-  $('pause-top').firstElementChild.textContent = state === 'paused' ? '▶' : 'Ⅱ';
+  $('pause').setAttribute('aria-label', state === 'paused' ? 'Resume game' : 'Pause game');
+  $('quick-pause').disabled = $('pause').disabled;
+  $('quick-pause').setAttribute('aria-label', state === 'paused' ? 'Resume game' : 'Pause game');
+  $('quick-pause').textContent = state === 'paused' ? '▶' : 'Ⅱ';
   $('start-settings').hidden = state === 'paused';
   $('overlay-help').hidden = state === 'paused';
   if (state === 'paused') {
@@ -153,7 +161,7 @@ function updateOverlay() {
     $('play').innerHTML = 'PLAY AGAIN <span>↗</span>';
     $('overlay-help').textContent = 'REVISIT THE FIELD GUIDE';
   }
-  $('game-status').textContent = { ready: 'READY WHEN YOU ARE', playing: 'IN THIS TOGETHER', paused: 'TAKING A BREATHER', over: 'THANKS FOR PLAYING TOGETHER' }[state];
+  $('game-status').textContent = { ready: 'PLAY TOGETHER.', playing: 'PLAY TOGETHER.', paused: 'PAUSED', over: 'ROUND OVER' }[state];
 }
 
 function start() {
@@ -186,7 +194,7 @@ function pause(keepFocus = false) {
   state = state === 'playing' ? 'paused' : 'playing';
   persistProgress();
   audio.unlock();
-  audio.play('pause');
+  audio.play(state === 'paused' ? 'pause' : 'resume');
   input.reset();
   if (!keepFocus) blurButton();
   lastTime = performance.now();
@@ -203,6 +211,7 @@ const input = new Input({
       const connected = slots.some(slot => slot.player === id);
       $('device-' + id).textContent = connected ? 'CONTROLLER + KEYS' : 'KEYBOARD · CONNECT PAD';
       document.querySelector(id === 0 ? '.player-one' : '.player-two').classList.toggle('has-controller', connected);
+      document.querySelector(`.control-player[data-player="${id}"]`).classList.toggle('has-controller', connected);
     });
     updateControllers(slots, unsupported);
     if (lost && state === 'playing') {
@@ -255,11 +264,11 @@ function renderBindings() {
   const move = isDefaultMove() ? 'D-PAD / STICK' : `STICK / ${['left', 'down', 'right'].map(action => (pad[action].length ? short(pad[action][0]) : '—')).join(' ')}`;
   const padRows = [['Move', move], ['Rotate ↻', padName(pad.cw)], ['Rotate ↺', padName(pad.ccw)], ['Drop', padName(pad.drop)], ['Park', padName(pad.park)], ['Exchange', padName(pad.exchange)]];
   document.querySelectorAll('.controller-controls').forEach(element => element.remove());
-  for (const selector of ['.player-one', '.player-two']) {
+  for (const id of [0, 1]) {
     const hints = document.createElement('div');
     hints.className = 'controls controller-controls';
     hints.append(...padRows.map(([label, value]) => hintRow(label, [value])));
-    document.querySelector(selector + ' .keyboard-controls').after(hints);
+    $(`keys-${id}`).after(hints);
   }
   const legend = [['Stick', 'Move / soft drop'], ...PAD_ACTIONS.map(action => [padName(pad[action]), ACTION_LABELS[action]])];
   document.querySelectorAll('.pad-legend').forEach(element => element.replaceChildren(...legend.map(([button, label]) => {
@@ -326,7 +335,8 @@ function updateHUD() {
     game.players.forEach(p => {
       const relay = p.piece != null && p.piece.relayOwner !== null;
       const note = $('relay-' + p.id);
-      note.textContent = relay ? '⇄ RELAY — pass before locking' : !p.canHold ? 'Park used. Lock to reset.' : ['Your side. Our score.', 'Different sides. Same team.'][p.id];
+      note.textContent = relay ? '⇄ RELAY — pass before locking' : !p.canHold ? 'Park used. Lock to reset.' : '';
+      note.hidden = !relay && p.canHold;
       note.classList.toggle('active', relay);
     });
   }
@@ -350,7 +360,7 @@ function announce(title, detail) {
 
 function processEvents() {
   for (const event of game.drainEvents()) {
-    if (event.type === 'notice') { toast(event.message); continue; }
+    if (event.type === 'notice') { audio.play('notice'); toast(event.message); continue; }
     audio.play(event.type, event.count);
     if (event.type === 'request') toast(`Player ${event.id + 1} wants to exchange. Partner, press ${tradeKey(1 - event.id)} or ${padName(bindings.pad.exchange)}.`);
     if (event.type === 'exchange') announce('A GOOD EXCHANGE', 'TWO SIDES. ONE TEAM.');
@@ -361,6 +371,7 @@ function processEvents() {
       if (event.spin) announce('T-SPIN', 'NICE FIT.');
     }
     if (event.type === 'clear') {
+      if (event.levelUp) audio.play('level');
       const names = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'FOUR ROW FLOW'];
       announce(`${event.spin ? 'T-SPIN ' : ''}${names[event.count]}`, `+${event.xp.toLocaleString()} XP${event.b2b ? ' · BACK-TO-BACK' : ''}${event.combo > 0 ? ` · COMBO ×${event.combo + 1}` : ''}`);
       renderer.flash(event.rows);
@@ -396,7 +407,13 @@ function frame(now) {
 
 $('play').addEventListener('click', start);
 $('pause').addEventListener('click', () => pause());
-$('pause-top').addEventListener('click', () => pause());
+$('quick-pause').addEventListener('click', () => pause());
+$('restore-menu').addEventListener('click', () => {
+  saved.header = true;
+  applyDisplay();
+  save();
+  blurButton();
+});
 $('focus').addEventListener('click', () => {
   saved.focus = !saved.focus;
   applyDisplay();
@@ -443,7 +460,7 @@ document.addEventListener('keydown', event => {
     closeSettings();
   }
 });
-for (const [id, key] of [['setting-focus', 'focus'], ['setting-grid', 'grid'], ['setting-hints', 'hints']]) {
+for (const [id, key] of [['setting-focus', 'focus'], ['setting-grid', 'grid'], ['setting-hints', 'hints'], ['setting-header', 'header'], ['setting-footer', 'footer']]) {
   $(id).addEventListener('change', () => {
     saved[key] = $(id).checked;
     applyDisplay();
@@ -797,7 +814,7 @@ function saveStage(index) {
     const slot = { savedAt: Date.now(), game: game.snapshot() };
     const next = [...stageSlots];
     next[index] = slot;
-    writeSlots(next, `Stage saved to slot ${index + 1}. Your round is still paused.`);
+    if (writeSlots(next, `Stage saved to slot ${index + 1}. Your round is still paused.`)) audio.play('save');
   };
   if (stageSlots[index] !== null) confirmAction({
     title: `Overwrite slot ${index + 1}?`, description: 'This replaces the saved stage with your current paused round.',
@@ -835,6 +852,7 @@ function loadStage(index) {
     updateOverlay();
     updateHUD();
     renderer.draw(game);
+    audio.play('load');
     toast(`Slot ${index + 1} loaded. Resume when both players are ready.`);
   };
   if (state === 'paused') confirmAction({
@@ -858,6 +876,7 @@ $('stages').addEventListener('click', () => {
   closeSettings();
   if (isDialogOpen()) return;
   if (state === 'playing') pause();
+  audio.unlock();
   input.reset();
   $('stages-status').textContent = state === 'ready' || state === 'over' ? 'Start a round to save, or load an existing stage.' : 'Paused. Choose a slot to save or load.';
   renderStages();

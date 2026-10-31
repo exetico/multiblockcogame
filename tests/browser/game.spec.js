@@ -24,10 +24,10 @@ test('boots without errors, starts, both players drop and park, then pauses', as
   await expect(page.locator('#score')).not.toHaveText(leftScore);
   await page.keyboard.press('KeyC');
   await expect(page.locator('#hold')).not.toHaveAttribute('aria-label', 'Shared parked piece, empty');
-  await page.keyboard.press('Period');
+  await page.keyboard.press('KeyK');
   await page.keyboard.press('KeyV');
   await expect(page.locator('#exchange-status')).toContainText('Player 1 asks');
-  await page.keyboard.press('Comma');
+  await page.keyboard.press('KeyL');
   await expect(page.locator('#exchange-status')).toContainText('Both press');
   await page.keyboard.press('Escape');
   await expect(page.locator('#overlay-title')).toContainText('pause');
@@ -128,14 +128,14 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await expect(page.locator('body')).toHaveClass(/focus-mode/);
     const board = await page.locator('#board').boundingBox();
     expect(board.width).toBeGreaterThan(original.width * 1.2);
-    expect(board.height).toBeGreaterThanOrEqual(Math.min(viewport.height - 142, viewport.width - 446));
+    expect(board.height).toBeGreaterThanOrEqual(Math.min(viewport.height - 144, viewport.width - 446));
     expect(Math.abs(board.width - board.height)).toBeLessThan(2);
     const score = await page.locator('.scoreboard').boundingBox();
     const dock = await page.locator('.shared-dock').boundingBox();
     expect(score.x + score.width).toBeLessThan(board.x);
     expect(dock.x).toBeGreaterThan(board.x + board.width);
     for (const id of [0, 1]) {
-      expect((await page.locator(`.player-${id === 0 ? 'one' : 'two'} .controls:visible`).boundingBox()).height).toBeLessThan(125);
+      expect((await page.locator(`.control-player[data-player="${id}"] .controls:visible`).boundingBox()).height).toBeLessThan(125);
     }
     const pageSize = await page.evaluate(() => ({
       width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
@@ -147,7 +147,7 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await page.getByRole('button', { name: 'LET’S PLAY' }).click();
     await page.keyboard.press('Space');
     await expect(page.locator('#score')).not.toHaveText('000000');
-    await page.keyboard.press('Period');
+    await page.keyboard.press('KeyK');
     await expect(page.locator('#hold')).not.toHaveAttribute('aria-label', 'Shared parked piece, empty');
   });
 
@@ -260,7 +260,7 @@ test('display settings pause safely, change grid rendering and hints, and persis
   await page.locator('#setting-hints').uncheck();
   await page.locator('#setting-focus').check();
   await expect(page.getByRole('button', { name: 'Toggle focus mode' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.player-one .controls:visible')).toHaveCount(0);
+  await expect(page.locator('.control-player[data-player="0"] .controls:visible')).toHaveCount(0);
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('#score')).toHaveText(score);
   await page.getByRole('button', { name: 'DONE', exact: false }).click();
@@ -279,17 +279,19 @@ test('display settings pause safely, change grid rendering and hints, and persis
   await expect(page.locator('#settings-dialog')).toBeHidden();
 });
 
-test('Danish-friendly right controls are shown and deliver rotate, park and exchange actions', async ({ page }) => {
+test('paired right controls rotate, Up drops instantly, K parks and L exchanges', async ({ page }) => {
   await begin(page);
-  await expect(page.locator('.player-two .controls:visible')).toContainText('R SHIFT');
-  await expect(page.locator('.player-two .controls:visible')).toContainText('R CTRL');
-  await expect(page.locator('.player-two .controls:visible')).toContainText('BACKSPACE');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText(',');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('.');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('K');
   const before = await page.locator('#board').evaluate(canvas => canvas.toDataURL());
-  await page.keyboard.press('ShiftRight');
+  await page.keyboard.press('Comma');
+  await page.keyboard.press('Period');
   await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ControlRight');
+  await expect(page.locator('#score')).not.toHaveText('000000');
+  await page.keyboard.press('KeyK');
   await expect(page.locator('#hold')).not.toHaveAttribute('aria-label', 'Shared parked piece, empty');
-  await page.keyboard.press('Backspace');
+  await page.keyboard.press('KeyL');
   await expect(page.locator('#exchange-status')).toContainText('Player 2 asks');
   await page.keyboard.press('KeyV');
   await expect(page.locator('#exchange-status')).toContainText('Both press');
@@ -315,13 +317,13 @@ test('visible controller guide explains Bluetooth, detects devices, switches sid
   });
   await expect(page.locator('#pad-count')).toHaveText('2/2');
   await expect(page.locator('#pad-devices')).toContainText('Standard pad 1');
-  await expect(page.locator('.player-two .controls:visible')).toContainText('A / CROSS');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('A / CROSS');
   await page.locator('#swap-controllers').click();
   await expect(page.locator('#pad-devices > div').first()).toContainText('Standard pad 1');
   await page.evaluate(() => { window.testPads = [window.testPads[1]]; });
   await expect(page.locator('#pad-count')).toHaveText('1/2');
   await expect(page.locator('#pad-devices > div').last()).toContainText('Standard pad 2');
-  await expect(page.locator('.player-one .controls:visible')).toContainText('SPACE');
+  await expect(page.locator('.control-player[data-player="0"] .controls:visible')).toContainText('SPACE');
   await page.locator('#controllers-done').click();
   await expect(page.locator('#controller-dialog')).toBeHidden();
   await expect(page.locator('#overlay-title')).toContainText('pause');
@@ -349,21 +351,21 @@ test('keys can be remapped with swap, cancel, reserved-key protection, persisten
   await expect(page.locator('#remap-status')).toContainText('Swapped with Left · Exchange');
   await page.locator('#controls-done').click();
   await expect(dialog).toBeHidden();
-  await expect(page.locator('.player-two .keyboard-controls')).toContainText('L');
-  await expect(page.locator('.player-one .keyboard-controls')).toContainText('ENTER');
+  await expect(page.locator('.control-player[data-player="1"] .keyboard-controls')).toContainText('L');
+  await expect(page.locator('.control-player[data-player="0"] .keyboard-controls')).toContainText('↑');
   await page.reload();
-  await expect(page.locator('.player-two .keyboard-controls')).toContainText('L');
+  await expect(page.locator('.control-player[data-player="1"] .keyboard-controls')).toContainText('L');
   await page.getByRole('button', { name: 'LET’S PLAY' }).click();
   await page.keyboard.press('KeyL');
   await expect(page.locator('#hold')).not.toHaveAttribute('aria-label', 'Shared parked piece, empty');
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowUp');
   await expect(page.locator('#exchange-status')).toContainText('Player 1 asks');
   await page.locator('#remap').click();
   await page.locator('#reset-all').click();
   await expect(page.locator('#remap-status')).toContainText('restored');
   await page.locator('#controls-done').click();
-  await expect(page.locator('.player-two .keyboard-controls')).toContainText('R CTRL');
-  await expect(page.locator('.player-one .keyboard-controls')).toContainText('SPACE');
+  await expect(page.locator('.control-player[data-player="1"] .keyboard-controls')).toContainText('K');
+  await expect(page.locator('.control-player[data-player="0"] .keyboard-controls')).toContainText('SPACE');
 });
 
 test('controller buttons can be remapped by pressing them, from the controller guide', async ({ page }) => {
@@ -385,7 +387,7 @@ test('controller buttons can be remapped by pressing them, from the controller g
   await expect(dialog.locator('.remap-slot[data-action="drop"][data-slot="0"]')).toHaveText('RT / R2');
   await page.evaluate(() => { window.testPad.buttons[7].pressed = false; });
   await page.locator('#controls-done').click();
-  await expect(page.locator('.player-two .controller-controls')).toContainText('RT / R2');
+  await expect(page.locator('.control-player[data-player="1"] .controller-controls')).toContainText('RT / R2');
   await page.locator('#pause').click();
   await page.evaluate(() => { window.testPad.buttons[2].pressed = true; });
   await page.waitForTimeout(150);
@@ -397,8 +399,9 @@ test('controller buttons can be remapped by pressing them, from the controller g
 test('prominent pause freezes play and New Game requires two confirmations, including cancellation', async ({ page }) => {
   await begin(page);
   await page.keyboard.press('Space');
-  const score = await page.locator('#score').textContent();
+  await expect(page.locator('#score')).not.toHaveText('000000');
   await page.getByRole('button', { name: 'Pause game', exact: true }).click();
+  const score = await page.locator('#score').textContent();
   await expect(page.getByRole('button', { name: 'Resume game', exact: true })).toBeEnabled();
   const board = await page.locator('#board').evaluate(canvas => canvas.toDataURL());
   await page.keyboard.press('Enter');
@@ -440,7 +443,7 @@ test('a zero-score round still requires confirmation and the memory card works o
   await page.keyboard.press('Escape');
   await expect(page.locator('#overlay-title')).toContainText('pause');
   await expect(page.locator('#score')).toHaveText('000000');
-  const pause = await page.locator('#pause-top').boundingBox();
+  const pause = await page.locator('#pause').boundingBox();
   const stages = await page.locator('#stages').boundingBox();
   expect(pause.x).toBeGreaterThanOrEqual(0);
   expect(stages.x + stages.width).toBeLessThanOrEqual(390);
@@ -455,7 +458,7 @@ test('a zero-score round still requires confirmation and the memory card works o
 test('three memory slots persist exact stages, confirm destructive actions and restore paused', async ({ page }) => {
   await begin(page);
   await page.keyboard.press('Space');
-  await page.keyboard.press('ControlRight');
+  await page.keyboard.press('KeyK');
   await page.keyboard.press('KeyV');
   await page.getByRole('button', { name: 'Save stages', exact: true }).click();
   await expect(page.locator('.stage-card')).toHaveCount(3);
@@ -465,7 +468,7 @@ test('three memory slots persist exact stages, confirm destructive actions and r
   await expect(page.locator('#stages-status')).toContainText('Stage saved');
   await stageButton(page, 'save', 2).click();
   await page.locator('#stages-done').click();
-  await page.locator('#pause-top').click();
+  await page.locator('#pause').click();
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Save stages', exact: true }).click();
   await stageButton(page, 'save', 3).click();
@@ -570,9 +573,9 @@ test('speed option changes and persists without changing score rules; loaded XP 
   await expect(page.locator('#xp-caption')).toContainText('Steady speed');
   await expect(page.locator('#xp')).toHaveText('100 XP');
   await expect(page.locator('#xp-caption')).toContainText('100 lifetime XP');
-  await page.locator('#pause-top').click();
+  await page.locator('#pause').click();
   await page.keyboard.press('Space');
-  await page.locator('#pause-top').click();
+  await page.locator('#pause').click();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('common-ground-v1')).lifetimeXP)).toBe(100);
 });
 
@@ -589,7 +592,7 @@ test('focus previews draw larger, sharp pieces without player labels below activ
   await begin(page);
   await page.locator('#focus').click();
   await page.keyboard.press('KeyC');
-  await page.locator('#pause-top').click();
+  await page.locator('#pause').click();
   const next = await page.locator('#next-0').boundingBox();
   const hold = await page.locator('#hold').boundingBox();
   expect(next.height).toBeGreaterThanOrEqual(250);
@@ -614,4 +617,60 @@ test('focus previews draw larger, sharp pieces without player labels below activ
     expect(size.drawnBlock).toBeGreaterThan(25);
   }
   expect(await page.evaluate(() => window.boardLabels.some(label => /^P[12]$/.test(label)))).toBe(false);
+});
+
+test('controls are last, repeated board labels are absent and idle relay notes take no space', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await begin(page);
+  await page.locator('#focus').click();
+  await expect(page.locator('.arena-labels, .arena-bottom')).toHaveCount(0);
+  await expect(page.locator('#relay-0')).toBeHidden();
+  await expect(page.locator('#relay-1')).toBeHidden();
+  await expect(page.locator('.player-panel .controls')).toHaveCount(0);
+  const controls = await page.locator('.control-bank').boundingBox();
+  const footer = await page.locator('footer').boundingBox();
+  const header = await page.locator('.topbar').boundingBox();
+  const pause = await page.locator('#pause').boundingBox();
+  expect(controls.y).toBeGreaterThanOrEqual(footer.y + footer.height - 1);
+  expect(pause.y).toBeGreaterThanOrEqual(header.y);
+  expect(pause.y + pause.height).toBeLessThanOrEqual(header.y + header.height);
+  expect(Math.abs(pause.x + pause.width / 2 - 640)).toBeLessThan(2);
+  await page.keyboard.press('KeyQ');
+  await page.keyboard.press('KeyE');
+  await page.keyboard.press('KeyC');
+  await expect(page.locator('#relay-0')).toBeVisible();
+  await expect(page.locator('#relay-0')).toContainText('Park used');
+});
+
+test('hidden header and footer persist, reclaim space and retain pause and menu recovery', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await begin(page);
+  await page.locator('#focus').click();
+  const before = await page.locator('#board').boundingBox();
+  await page.locator('#settings').hover();
+  await page.locator('#setting-header').uncheck();
+  await page.locator('#setting-footer').uncheck();
+  await page.locator('#settings-done').click();
+  await expect(page.locator('.topbar')).toBeHidden();
+  await expect(page.locator('footer')).toBeHidden();
+  await expect(page.locator('#restore-menu')).toBeVisible();
+  await expect(page.locator('#quick-pause')).toBeVisible();
+  expect((await page.locator('#board').boundingBox()).height).toBeGreaterThan(before.height + 65);
+  await page.locator('#quick-pause').click();
+  await expect(page.locator('#overlay')).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await page.reload();
+  await expect(page.locator('.topbar')).toBeHidden();
+  await expect(page.locator('footer')).toBeHidden();
+  await page.locator('#restore-menu').click();
+  await expect(page.locator('.topbar')).toBeVisible();
+  await expect(page.locator('#hidden-menu-tools')).toBeHidden();
+  await page.locator('#settings').hover();
+  await expect(page.locator('#setting-footer')).not.toBeChecked();
+  await page.locator('#setting-footer').check();
+  await page.locator('#setting-hints').uncheck();
+  await page.locator('#settings-done').click();
+  await expect(page.locator('footer')).toBeVisible();
+  await expect(page.locator('.control-bank')).toBeHidden();
 });

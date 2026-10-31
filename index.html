@@ -13,9 +13,8 @@
     <div class="app">
       <header class="topbar">
         <a class="brand" href="./" aria-label="Common Ground home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>COMMON<span class="brand-light">GROUND</span></span></a>
-        <span class="edition"><span class="status-dot"></span> LOCAL CO-OP <span class="edition-extra">/ TWO PLAYERS, ONE TEAM</span></span>
+        <button id="pause" class="header-pause" aria-label="Pause game" disabled>PAUSE <kbd>ESC</kbd></button>
         <nav class="utility" aria-label="Game settings">
-          <button id="pause-top" class="icon-button" aria-label="Pause game" title="Pause / resume (Escape)" disabled><span aria-hidden="true">Ⅱ</span></button>
           <button id="stages" class="icon-button" aria-label="Save stages" title="Memory card: save / load stages"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 3h13l3 3v15H4z"/><path d="M8 3v6h8V3M8 21v-8h8v8"/></svg></button>
           <button id="focus" class="icon-button focus-button" aria-label="Toggle focus mode" aria-pressed="true" title="Focus / Classic layout"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18"/></svg></button>
           <button id="settings" class="icon-button" aria-label="Display settings" aria-controls="settings-dialog" aria-expanded="false" aria-haspopup="dialog" title="Hover for display settings">⚙</button>
@@ -39,13 +38,10 @@
             <div class="player-heading"><span class="player-number">01</span><div><h2>LEFT SIDE</h2><button class="device" id="device-0" aria-label="Controller setup for left player">KEYBOARD · CONNECT PAD</button></div><span class="player-dot"></span></div>
             <div class="next-header"><span class="eyebrow">UP NEXT</span><span class="subtle">3 PIECES</span></div>
             <canvas id="next-0" class="next-canvas" width="180" height="210" aria-label="Player one next pieces"></canvas>
-            <div class="relay-note" id="relay-0">Your side. Our score.</div>
-            <div class="controls keyboard-controls" id="keys-0"></div>
-            <div class="side-foot"><span class="mini-line"></span> BUILT FOR TWO</div>
+            <div class="relay-note" id="relay-0" hidden></div>
           </aside>
 
           <div class="arena-column">
-            <div class="arena-labels"><span>← LEFT FIELD</span><span class="shared-label">SHARED × 2</span><span>RIGHT FIELD →</span></div>
             <div class="board-shell">
               <canvas id="board" aria-label="Shared falling-block board, 12 columns and 12 rows" role="img"></canvas>
               <div id="announcement" class="announcement" aria-live="polite"></div>
@@ -59,16 +55,13 @@
                 <div id="start-settings"><label class="toggle"><input id="relay-toggle" type="checkbox" checked /><span></span>Relay pieces <small>occasional required handoffs</small></label></div>
               </div>
             </div>
-            <div class="arena-bottom"><span><span class="status-dot"></span> <span id="game-status">READY WHEN YOU ARE</span></span><button id="pause" class="text-button" disabled>PAUSE <kbd>ESC</kbd></button></div>
           </div>
 
           <aside class="player-panel player-two" aria-label="Player two">
             <div class="player-heading"><span class="player-number">02</span><div><h2>RIGHT SIDE</h2><button class="device" id="device-1" aria-label="Controller setup for right player">KEYBOARD · CONNECT PAD</button></div><span class="player-dot"></span></div>
             <div class="next-header"><span class="eyebrow">UP NEXT</span><span class="subtle">3 PIECES</span></div>
             <canvas id="next-1" class="next-canvas" width="180" height="210" aria-label="Player two next pieces"></canvas>
-            <div class="relay-note" id="relay-1">Different sides. Same team.</div>
-            <div class="controls keyboard-controls" id="keys-1"></div>
-            <div class="side-foot"><span class="mini-line"></span> BETTER TOGETHER</div>
+            <div class="relay-note" id="relay-1" hidden></div>
           </aside>
         </section>
 
@@ -78,7 +71,15 @@
           <div class="exchange-status"><span class="exchange-icon" aria-hidden="true">⇄</span><div><span class="eyebrow">PIECE EXCHANGE</span><span id="exchange-status">Both press exchange to trade</span></div></div>
         </section>
       </main>
-      <footer><span>FALL TOGETHER. RISE TOGETHER.</span><span><button id="remap" class="text-button">CONTROLS</button><span class="footer-dot">·</span><button id="controllers" class="text-button">CONTROLLER SETUP <span id="pad-count">0/2</span></button><span class="footer-dot">·</span><button id="restart" class="text-button">NEW GAME</button></span></footer>
+      <footer><span id="game-status" aria-live="polite">PLAY TOGETHER.</span><span><button id="remap" class="text-button">CONTROLS</button><span class="footer-dot">·</span><button id="controllers" class="text-button">CONTROLLER SETUP <span id="pad-count">0/2</span></button><span class="footer-dot">·</span><button id="restart" class="text-button">NEW GAME</button></span></footer>
+      <section class="control-bank" aria-label="Player controls">
+        <div class="control-player" data-player="0" role="group" aria-label="Left player controls"><div class="controls keyboard-controls" id="keys-0"></div></div>
+        <div class="control-player" data-player="1" role="group" aria-label="Right player controls"><div class="controls keyboard-controls" id="keys-1"></div></div>
+      </section>
+    </div>
+    <div id="hidden-menu-tools" hidden>
+      <button id="restore-menu" class="icon-button" aria-label="Show top menu" title="Show top menu">☰</button>
+      <button id="quick-pause" class="icon-button" aria-label="Pause game" title="Pause / resume (Escape)" disabled>Ⅱ</button>
     </div>
 
     <dialog id="layout-dialog" aria-labelledby="layout-title">
@@ -99,7 +100,9 @@
       <div class="display-options">
         <label><span><strong>Focus mode</strong><small>A larger field, side-mounted score and shared space on wide screens.</small></span><input id="setting-focus" type="checkbox" /></label>
         <label><span><strong>Grid lines</strong><small>Show cell guides. The shared columns remain highlighted either way.</small></span><input id="setting-grid" type="checkbox" checked /></label>
-        <label><span><strong>Keyboard hints</strong><small>Compact controls below each player's next pieces.</small></span><input id="setting-hints" type="checkbox" checked /></label>
+        <label><span><strong>Control hints</strong><small>Keyboard or controller hints at the very bottom of the page.</small></span><input id="setting-hints" type="checkbox" checked /></label>
+        <label><span><strong>Top menu</strong><small>Hide the header for more board space. A floating menu button brings it back; Escape still pauses.</small></span><input id="setting-header" type="checkbox" checked /></label>
+        <label><span><strong>Footer</strong><small>Hide footer actions. Show it again here. Keyboard hints can be hidden separately.</small></span><input id="setting-footer" type="checkbox" checked /></label>
         <label><span><strong>Progressive speed</strong><small>Faster falling every ten cleared rows. Off keeps a steady starting pace. Changes pause play and apply to this round.</small></span><input id="setting-speed" type="checkbox" checked /></label>
       </div>
       <button id="settings-remap" class="text-button remap-link">CUSTOMIZE KEYS &amp; BUTTONS →</button>
@@ -168,7 +171,7 @@
       <p>Left player: <kbd data-bind="0:left">A</kbd> <kbd data-bind="0:down">S</kbd> <kbd data-bind="0:right">D</kbd> move, <kbd data-bind="0:cw">W</kbd> / <kbd data-bind="0:ccw">Q</kbd> rotate, <kbd data-bind="0:drop">SPACE</kbd> drops. Right player: <kbd data-bind="1:left">←</kbd> <kbd data-bind="1:down">↓</kbd> <kbd data-bind="1:right">→</kbd> move, <kbd data-bind="1:cw">↑</kbd> / <kbd data-bind="1:ccw">R SHIFT</kbd> rotate, <kbd data-bind="1:drop">ENTER</kbd> drops. Keys are physical positions, so they work on Danish and other layouts. Change any key or controller button under <strong>CONTROLS</strong> in the footer.</p>
       <section class="gamepad-help"><h3>Controllers welcome.</h3><p>Connect a standard controller and press a button. The first controller plays <strong>right</strong>; the second plays <strong>left</strong>. Keyboards stay active.</p><div class="pad-controls pad-legend"></div></section>
       <p class="help-fineprint">Ghost outlines show the landing position. Escape pauses. Use FOCUS for a larger field and the gear for display settings. Sound is synthesized on your device. Best score and lifetime team XP stay in this browser. A keyboard or controller is required; touch controls are not included.</p>
-      <p>Use the pause button beside the memory-card icon, Escape, or your controller's pause button. New Game pauses first and asks twice before discarding an unfinished round. The memory-card icon opens three save slots. Progressive speed is on by default: every ten cleared rows speeds up falling, not elapsed time. Turn it off in settings for a steady pace; levels, score and XP still advance.</p>
+      <p>Use Pause in the header centre, Escape, or your controller's pause button. New Game pauses first and asks twice before discarding an unfinished round. The memory-card icon opens three save slots. Progressive speed is on by default: every ten cleared rows speeds up falling, not elapsed time. Turn it off in settings for a steady pace; levels, score and XP still advance. Settings can hide the header and footer. With the header hidden, floating menu and pause buttons remain available.</p>
       <button id="help-done" class="primary-button">GOT IT <span>↗</span></button>
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>

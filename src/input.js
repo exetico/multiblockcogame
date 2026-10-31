@@ -6,8 +6,8 @@ export const ACTION_LABELS = {
 };
 export const DEFAULT_BINDINGS = Object.freeze({
   keys: [
-    { left: ['KeyA'], right: ['KeyD'], down: ['KeyS'], cw: ['KeyW'], ccw: ['KeyQ'], drop: ['Space'], park: ['KeyC'], exchange: ['KeyV'] },
-    { left: ['ArrowLeft'], right: ['ArrowRight'], down: ['ArrowDown'], cw: ['ArrowUp'], ccw: ['ShiftRight', 'Slash'], drop: ['Enter'], park: ['ControlRight', 'Period'], exchange: ['Backspace', 'Comma'] },
+    { left: ['KeyA'], right: ['KeyD'], down: ['KeyS'], cw: ['KeyE'], ccw: ['KeyQ'], drop: ['Space'], park: ['KeyC'], exchange: ['KeyV'] },
+    { left: ['ArrowLeft'], right: ['ArrowRight'], down: ['ArrowDown'], cw: ['Period'], ccw: ['Comma'], drop: ['ArrowUp', 'Enter'], park: ['KeyK'], exchange: ['KeyL'] },
   ],
   pad: { left: [14], right: [15], down: [13], cw: [0], ccw: [1], drop: [2], park: [3], exchange: [4, 5], pause: [9] },
 });
@@ -43,6 +43,18 @@ export function normalizeBindings(raw) {
     if (Object.values(candidate).every(Boolean) && new Set(buttons).size === buttons.length && buttons.length) pad = candidate;
   }
   return { keys, pad };
+}
+
+export function migrateBindings(raw) {
+  const bindings = normalizeBindings(raw);
+  const previousDefaults = [
+    { left: ['KeyA'], right: ['KeyD'], down: ['KeyS'], cw: ['KeyW'], ccw: ['KeyQ'], drop: ['Space'], park: ['KeyC'], exchange: ['KeyV'] },
+    { left: ['ArrowLeft'], right: ['ArrowRight'], down: ['ArrowDown'], cw: ['ArrowUp'], ccw: ['ShiftRight', 'Slash'], drop: ['Enter'], park: ['ControlRight', 'Period'], exchange: ['Backspace', 'Comma'] },
+  ];
+  if (bindings.keys.every((map, id) => ACTIONS.every(action => String(map[action]) === String(previousDefaults[id][action])))) {
+    bindings.keys = cloneBindings().keys;
+  }
+  return bindings;
 }
 
 export function keymapFrom(bindings) {
