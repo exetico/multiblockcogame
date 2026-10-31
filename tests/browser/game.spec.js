@@ -326,3 +326,70 @@ test('visible controller guide explains Bluetooth, detects devices, switches sid
   await expect(page.locator('#controller-dialog')).toBeHidden();
   await expect(page.locator('#overlay-title')).toContainText('pause');
 });
+
+test('keys can be remapped with swap, cancel, reserved-key protection, persistence and reset', async ({ page }) => {
+  await begin(page);
+  await page.locator('#remap').click();
+  const dialog = page.locator('#controls-dialog');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await page.locator('#tab-keys-1').click();
+  await dialog.locator('.remap-slot[data-action="park"][data-slot="0"]').click();
+  await expect(dialog.locator('.remap-slot.waiting')).toHaveText('PRESS KEY…');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('#remap-status')).toContainText('Cancelled');
+  await dialog.locator('.remap-slot[data-action="park"][data-slot="0"]').click();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#remap-status')).toContainText('reserved');
+  await page.keyboard.press('KeyL');
+  await expect(dialog.locator('.remap-slot[data-action="park"][data-slot="0"]')).toHaveText('L');
+  await dialog.locator('.remap-slot[data-action="drop"][data-slot="0"]').click();
+  await page.keyboard.press('KeyV');
+  await expect(page.locator('#remap-status')).toContainText('Swapped with Left · Exchange');
+  await page.locator('#controls-done').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('.player-two .keyboard-controls')).toContainText('L');
+  await expect(page.locator('.player-one .keyboard-controls')).toContainText('ENTER');
+  await page.reload();
+  await expect(page.locator('.player-two .keyboard-controls')).toContainText('L');
+  await page.getByRole('button', { name: 'LET’S PLAY' }).click();
+  await page.keyboard.press('KeyL');
+  await expect(page.locator('#hold')).not.toHaveAttribute('aria-label', 'Shared parked piece, empty');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#exchange-status')).toContainText('Player 1 asks');
+  await page.locator('#remap').click();
+  await page.locator('#reset-all').click();
+  await expect(page.locator('#remap-status')).toContainText('restored');
+  await page.locator('#controls-done').click();
+  await expect(page.locator('.player-two .keyboard-controls')).toContainText('R CTRL');
+  await expect(page.locator('.player-one .keyboard-controls')).toContainText('SPACE');
+});
+
+test('controller buttons can be remapped by pressing them, from the controller guide', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.testPad = null;
+    Object.defineProperty(navigator, 'getGamepads', { value: () => [window.testPad] });
+  });
+  await begin(page);
+  await page.evaluate(() => {
+    window.testPad = { index: 0, id: 'Remap pad', mapping: 'standard', connected: true, axes: [0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false })) };
+  });
+  await page.locator('#controllers').click();
+  await page.locator('#controllers-remap').click();
+  const dialog = page.locator('#controls-dialog');
+  await expect(page.locator('#tab-pad')).toHaveAttribute('aria-selected', 'true');
+  await dialog.locator('.remap-slot[data-action="drop"][data-slot="0"]').click();
+  await expect(dialog.locator('.remap-slot.waiting')).toHaveText('PRESS BUTTON…');
+  await page.evaluate(() => { window.testPad.buttons[7].pressed = true; });
+  await expect(dialog.locator('.remap-slot[data-action="drop"][data-slot="0"]')).toHaveText('RT / R2');
+  await page.evaluate(() => { window.testPad.buttons[7].pressed = false; });
+  await page.locator('#controls-done').click();
+  await expect(page.locator('.player-two .controller-controls')).toContainText('RT / R2');
+  await page.locator('#pause').click();
+  await page.evaluate(() => { window.testPad.buttons[2].pressed = true; });
+  await page.waitForTimeout(150);
+  await expect(page.locator('#score')).toHaveText('000000');
+  await page.evaluate(() => { window.testPad.buttons[2].pressed = false; window.testPad.buttons[7].pressed = true; });
+  await expect(page.locator('#score')).not.toHaveText('000000');
+});

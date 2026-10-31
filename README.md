@@ -48,6 +48,10 @@ relay cadence, scoring, and input mappings are original choices.
 | Request / confirm exchange | V | Backspace | Either bumper |
 | Pause / resume | Escape | Escape | Start / Options |
 
+These are the defaults. **Every key and controller button can be changed** under
+**CONTROLS** in the footer (also linked from display settings and the
+controller guide). See [Custom controls](#custom-controls).
+
 Connect a controller and press a button for browser detection. The **first
 controller plays right**, leaving the left keyboard controls for your partner.
 A second controller plays left. Both keyboard mappings remain active. Standard
@@ -78,6 +82,28 @@ Upper-right buttons toggle synthesized sound, enter fullscreen, or open the
 field guide. Leaving the tab, losing window focus, opening help, or disconnecting
 a controller pauses play. Resume when both players are ready. Some keyboards
 cannot register many simultaneous keys; controllers avoid keyboard ghosting.
+
+## Custom controls
+
+Open **CONTROLS** in the footer. Choose a tab: **Left keyboard**, **Right
+keyboard**, or **Controller**. Select a slot and press the key or controller
+button you want to use. Each action has a main binding and an optional extra
+binding.
+
+- **Escape cancels** a capture and always pauses the game, so it cannot be
+  assigned. Tab, Windows/Command, Caps Lock, and F1-F12 are also reserved.
+- Choosing a key or button that is already in use **swaps** the two bindings.
+  The status line shows what moved. If an action ends up without a binding,
+  it is marked **UNBOUND** until you assign one.
+- **×** removes a binding. **Reset this set** restores the defaults for the
+  current tab. **Reset all** restores every binding.
+- Controller bindings apply to both controllers. The left stick always moves.
+  Pause defaults to Start / Options.
+- Bindings use physical key positions. In Chromium-based browsers, labels show
+  your layout's characters, such as Æ and Ø on Danish keyboards.
+- Changes take effect immediately. On-screen hints, help, and toasts update,
+  and the bindings are saved in this browser. Invalid saved bindings fall back
+  to the defaults.
 
 ## Focus mode and display settings
 
@@ -121,7 +147,7 @@ ends back-to-back; a no-clear lock ends the combo.
 
 XP comes **only from cleared rows**. Every ten total rows raises the level.
 The progress bar shows rows toward the next level; the XP value is for the
-current round. Best score, lifetime team XP, sound, relay, and display preferences are
+current round. Best score, lifetime team XP, sound, relay, display preferences, and custom controls are
 saved in browser storage under `common-ground-v1`. New rounds retain earned
 progress. No personal data is sent anywhere. Storage failures show a notice.
 

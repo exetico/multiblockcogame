@@ -8,7 +8,10 @@ Keep branding, visuals, and synthesized audio original.
 - `src/engine.js`: DOM-free rules, exported field constants, independent
   seven-piece bags, shared board, score, XP, combos, and park slot.
 - `src/input.js`: keyboard and standard Gamepad API input; edge-triggered actions,
-  bounded directional repeat, and disconnect detection.
+  bounded directional repeat, and disconnect detection. It also contains the
+  binding model: `DEFAULT_BINDINGS`, `normalizeBindings`, `assignBinding`
+  (swap on conflict), `clearBinding`, `keyLabel`, and `buttonLabel`.
+  `Input#setBindings` rebuilds the live keymap.
 - `src/render.js`: device-pixel-ratio-aware Canvas 2D board and previews.
 - `src/audio.js`: gesture-unlocked Web Audio effects; no downloaded audio.
 - `src/main.js`: lifecycle, persistence, dialogs, fullscreen, and engine events.
@@ -53,6 +56,18 @@ connected controllers' side assignments on disconnect; side switching changes
 input ownership only and takes place while the setup dialog gates gameplay.
 Show controller hints for assigned players and retain keyboard fallback.
 Active pieces have no player-colored ownership borders; preserve landing ghosts.
+
+Bindings are data. Never hardcode keys or button indexes in gameplay, hints,
+help (`[data-bind]`), or toasts; render them from the current bindings.
+Bindings are keyed by `event.code` (one main and one optional extra, max 2 per
+action) and standard-mapping button indexes 0-16. Codes are unique across
+both players, and buttons are unique within the shared controller map.
+Escape, Tab, Meta, Caps Lock, and F-keys are reserved. Validate stored bindings
+under `saved.controls`; fall back to the defaults when data is invalid.
+`DEFAULT_BINDINGS` must stay immutable. Unbound actions are allowed but
+surfaced. The controls dialog gates gameplay and pauses play. Capture
+swallows the key (including activation and dialog cancel), and controller
+capture accepts only a newly pressed button.
 
 ## Development
 
