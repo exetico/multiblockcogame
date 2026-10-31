@@ -157,14 +157,24 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
 
 }
 
-  test('first visit defaults to Focus; choice and cookie survive reload and Classic remains available', async ({ page, context }) => {
+  test('first visit introduces Immersive and explains hidden menus; Focus and Classic remain available', async ({ page, context }) => {
     await page.goto('/');
     await expect(page.locator('#layout-dialog')).toBeVisible();
     await expect(page.locator('body')).toHaveClass(/focus-mode/);
+    await expect(page.locator('body')).toHaveClass(/hide-header/);
+    await expect(page.locator('body')).toHaveClass(/hide-footer/);
+    await expect(page.locator('#choose-immersive')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#layout-dialog')).toContainText('Floating');
+    await expect(page.locator('#layout-dialog')).toContainText('ESC');
+    await page.locator('.intro-options summary').click();
+    await expect(page.locator('.intro-options')).toContainText('three browser-local save slots');
+    await expect(page.locator('.intro-options')).toContainText('every ten cleared rows');
     await expect(page.locator('#focus')).toHaveClass(/icon-button/);
-    await expect(page.locator('#focus svg')).toBeVisible();
-    await page.getByRole('button', { name: 'Focus RECOMMENDED' }).click();
+    await page.locator('#choose-focus').click();
     await expect(page.locator('#layout-dialog')).toBeHidden();
+    await expect(page.locator('#focus svg')).toBeVisible();
+    await expect(page.locator('.topbar')).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible();
     expect((await context.cookies()).find(cookie => cookie.name === 'common-ground-layout')?.value).toBe('focus');
     await page.reload();
     await expect(page.locator('#layout-dialog')).toBeHidden();
@@ -176,7 +186,7 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await expect(page.locator('#layout-dialog')).toBeHidden();
   });
 
-  test('first-time Classic choice persists; skipping uses Focus', async ({ page, context }) => {
+  test('first-time Classic choice persists; skipping uses Immersive and its recovery buttons', async ({ page, context }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Classic', exact: false }).click();
     await page.reload();
@@ -190,6 +200,9 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await page.reload();
     await expect(page.locator('#focus')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('#layout-dialog')).toBeHidden();
+    await expect(page.locator('#restore-menu')).toBeVisible();
+    await expect(page.locator('footer')).toBeHidden();
+    expect((await context.cookies()).find(cookie => cookie.name === 'common-ground-layout')?.value).toBe('immersive');
   });
 
   test('settings open on hover, stay reachable, close on leaving and pause safely', async ({ page }) => {
@@ -198,6 +211,8 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await expect(page.locator('#settings-dialog')).toBeVisible();
     await expect(page.locator('#settings')).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('#overlay-title')).toContainText('pause');
+    await page.waitForTimeout(350);
+    await expect(page.locator('#settings-dialog')).toBeVisible();
     await page.locator('#settings-title').hover();
     await page.waitForTimeout(350);
     await expect(page.locator('#settings-dialog')).toBeVisible();
@@ -214,7 +229,7 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
     await page.goto('http://127.0.0.1:4173/');
-    await page.getByRole('button', { name: 'Focus RECOMMENDED' }).tap();
+    await page.locator('#choose-focus').tap();
     await page.locator('#settings').tap();
     await expect(page.locator('#settings-dialog')).toBeVisible();
     await page.locator('#setting-grid').uncheck();
@@ -687,4 +702,87 @@ test('hidden header and footer persist, reclaim space and retain pause and menu 
   await page.locator('#settings-done').click();
   await expect(page.locator('footer')).toBeVisible();
   await expect(page.locator('.control-player').first()).toBeHidden();
+});
+
+test('Immersive is a selectable third view; replaying introduction pauses without resetting or changing the view', async ({ page }) => {
+  await begin(page);
+  await page.keyboard.press('Space');
+  await expect(page.locator('#score')).not.toHaveText('000000');
+  await page.locator('#settings').click();
+  const score = await page.locator('#score').textContent();
+  const pieces = await page.locator('#next-0').getAttribute('aria-label');
+  await page.locator('#setting-view').focus();
+  await page.locator('#setting-view').selectOption('immersive');
+  await expect(page.locator('#setting-header')).not.toBeChecked();
+  await expect(page.locator('#setting-footer')).not.toBeChecked();
+  await page.locator('#settings-intro').click();
+  await expect(page.locator('#layout-dialog')).toBeVisible();
+  await expect(page.locator('#choose-immersive')).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('KeyV');
+  await expect(page.locator('#score')).toHaveText(score);
+  await page.locator('#intro-done').click();
+  await expect(page.locator('#layout-dialog')).toBeHidden();
+  await expect(page.locator('#quick-pause')).toHaveAttribute('aria-label', 'Resume game');
+  await expect(page.locator('#next-0')).toHaveAttribute('aria-label', pieces);
+  await page.locator('#restore-menu').click();
+  await page.locator('#settings').click();
+  await expect(page.locator('#setting-view')).toHaveValue('custom');
+  await page.locator('#setting-view').focus();
+  await page.locator('#setting-view').selectOption('focus');
+  await expect(page.locator('#setting-header')).toBeChecked();
+  await expect(page.locator('#setting-footer')).toBeChecked();
+  await page.locator('#settings-done').click();
+  await page.locator('#help').click();
+  await page.locator('#help-intro').click();
+  await expect(page.locator('#choose-focus')).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#score')).toHaveText(score);
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+});
+
+test('existing stored layout choices and partial menu preferences are preserved', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('common-ground-v1')) localStorage.setItem('common-ground-v1', JSON.stringify({
+      layoutChosen: true, focus: true, header: false, footer: true, best: 1234, lifetimeXP: 600,
+    }));
+  });
+  await page.goto('/');
+  await expect(page.locator('#layout-dialog')).toBeHidden();
+  await expect(page.locator('.topbar')).toBeHidden();
+  await expect(page.locator('footer')).toBeVisible();
+  await expect(page.locator('#best')).toHaveText('1,234');
+  await page.locator('#restore-menu').click();
+  await page.reload();
+  await expect(page.locator('.topbar')).toBeVisible();
+  await expect(page.locator('footer')).toBeVisible();
+  await expect(page.locator('#layout-dialog')).toBeHidden();
+});
+
+test('legacy Focus cookie without stored preferences keeps menus visible', async ({ page, context }) => {
+  await context.addCookies([{ name: 'common-ground-layout', value: 'focus', url: 'http://127.0.0.1:4173/' }]);
+  await page.goto('/');
+  await expect(page.locator('#layout-dialog')).toBeHidden();
+  await expect(page.locator('.topbar')).toBeVisible();
+  await expect(page.locator('footer')).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/focus-mode/);
+});
+
+test('new mobile visitors can keep Immersive, restore menus and revisit the introduction', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  const page = await context.newPage();
+  await page.goto('http://127.0.0.1:4173/');
+  await expect(page.locator('#layout-dialog')).toBeVisible();
+  expect(await page.locator('#layout-dialog').evaluate(dialog => dialog.scrollTop)).toBe(0);
+  await page.locator('#intro-done').tap();
+  await expect(page.locator('#layout-dialog')).toBeHidden();
+  await expect(page.locator('.topbar')).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.locator('#restore-menu').tap();
+  await page.locator('#settings').tap();
+  await page.locator('#settings-intro').tap();
+  await expect(page.locator('#layout-dialog')).toBeVisible();
+  await page.locator('#choose-classic').tap();
+  await expect(page.locator('.topbar')).toBeVisible();
+  await expect(page.locator('footer')).toBeVisible();
+  await context.close();
 });

@@ -133,14 +133,35 @@ binding.
 
 ## Focus mode and display settings
 
-**Focus is the default layout.** On your first visit, an overlay lets you
-choose Focus (recommended) or Classic for your screen. Skip or press Escape
-to use Focus. Your choice is remembered in local storage and a one-year,
-same-site preference cookie scoped to this game's path; there is no tracking.
-Existing progress and preferences are preserved.
+**Immersive is the default for new visitors.** It uses Focus's larger board
+and sidebars, with the header and footer hidden. Score, previews, shared park
+and desktop sidebar controls remain visible. Floating **☰ menu** and **Pause**
+buttons stay available, and Escape/controller pause still work.
 
-The round **layout icon** beside fullscreen switches between Focus and Classic
-without restarting the round. Focus expands the playfield without entering
+On your first visit, an introduction explains the shared board, pause/menu
+recovery, keyboard remapping and three view presets:
+
+| View | Board layout | Header and footer |
+|---|---|---|
+| Immersive | Larger board, compact sidebars | Hidden |
+| Focus | Larger board, compact sidebars | Visible |
+| Classic | Score above the board | Visible |
+
+Expand **More ways to tune your game** for grid/hint visibility, fullscreen,
+sound, speed, relays, controllers and saved stages. Select a view to continue,
+or use Continue, × or Escape to keep the current view (Immersive on first use).
+Replay the introduction from **gear → Introduction & view guide** or How to
+play. Opening it pauses; closing it never auto-resumes or resets the round.
+
+Your choice is remembered in local storage and a one-year,
+same-site preference cookie scoped to this game's path; there is no tracking.
+Existing layout choices, custom menu visibility, progress and preferences are
+preserved; returning users are not forced into Immersive.
+
+Choose any preset under **gear → View mode** or in the introduction.
+The round **layout icon** beside fullscreen switches between Focus and Classic;
+from Immersive it restores the Focus preset, including header/footer.
+Changing views does not restart the round. Focus expands the playfield without entering
 browser fullscreen. On wide screens, the team score and XP move to the left sidebar,
 and the shared park and exchange status move to the right. The header is
 shorter, keyboard hints use compact rows, and the square field uses the
@@ -167,7 +188,9 @@ not pause or restart play. Fullscreen remains a separate option.
 Hide **Top menu** or **Footer** independently in settings to recover board space.
 A floating menu button restores a hidden header, and a floating pause button
 remains usable alongside Escape/controllers. Restore the footer in settings.
-These preferences survive reloads. Control hints can be hidden separately.
+Individual visibility/layout switches may produce a **Custom** view, reported
+by the view selector. These preferences survive reloads. Control hints can be
+hidden separately.
 
 **Progressive speed is on by default.** Falling gets faster every ten cleared
 rows, not with elapsed time: the interval starts at 900 ms, multiplies by 0.79

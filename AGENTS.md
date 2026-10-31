@@ -27,9 +27,22 @@ Settings use a non-modal hover panel, with a pointer-leave grace period,
 keyboard focus, Escape/outside dismissal, and tap fallback. Do not let hover
 steal focus or auto-resume gameplay. All open panels/dialogs, including the
 first-visit layout chooser, gate keyboard/gamepad gameplay. Settings/help pause
-an active round. Focus defaults to true; Classic stays available. Persist the
+an active round. New visitors default to Immersive (focus true, header/footer
+false); Focus and Classic stay available as explicit presets. Persist the
 layout choice in validated local storage and a path-scoped same-site cookie,
-with visible storage errors. Skip/Escape on onboarding selects Focus.
+with visible storage errors. Preserve returning users' layout/menu choices;
+legacy Focus/Classic cookies without local preferences keep menus visible.
+`viewMode` derives Immersive/Focus/Classic/Custom from focus/header/footer.
+`setView` applies presets; individual switches remain available for custom
+layouts. Update the layout cookie whenever visibility changes, including menu
+recovery, so a stale Immersive cookie cannot hide the header on reload.
+Skip/Escape/Continue on onboarding keeps the current view, never forces a new
+preset. The introduction is replayable from settings/help, pauses gameplay,
+uses live binding labels, and explains hidden-menu recovery and configurable
+features. Do not auto-resume or reset the round after dismissal.
+The hover-close grace timer must check pointer presence as well as focus:
+keep settings open while either the gear or panel is hovered, even after
+restoring focus to the game.
 
 ## Required invariants
 
