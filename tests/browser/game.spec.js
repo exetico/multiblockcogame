@@ -393,3 +393,225 @@ test('controller buttons can be remapped by pressing them, from the controller g
   await page.evaluate(() => { window.testPad.buttons[2].pressed = false; window.testPad.buttons[7].pressed = true; });
   await expect(page.locator('#score')).not.toHaveText('000000');
 });
+
+test('prominent pause freezes play and New Game requires two confirmations, including cancellation', async ({ page }) => {
+  await begin(page);
+  await page.keyboard.press('Space');
+  const score = await page.locator('#score').textContent();
+  await page.getByRole('button', { name: 'Pause game', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Resume game', exact: true })).toBeEnabled();
+  const board = await page.locator('#board').evaluate(canvas => canvas.toDataURL());
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  expect(await page.locator('#board').evaluate(canvas => canvas.toDataURL())).toBe(board);
+  await page.getByRole('button', { name: 'Resume game', exact: true }).click();
+  await page.locator('#restart').click();
+  await expect(page.locator('#confirm-dialog')).toBeVisible();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await expect(page.locator('#score')).toHaveText(score);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#confirm-dialog')).toBeHidden();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await page.locator('#restart').click();
+  await page.locator('#confirm-accept').click();
+  await expect(page.locator('#confirm-title')).toHaveText('Discard this round for sure?');
+  await expect(page.locator('#confirm-accept')).toBeDisabled();
+  await page.locator('#confirm-cancel').click();
+  await expect(page.locator('#score')).toHaveText(score);
+  await page.locator('#restart').click();
+  await page.locator('#confirm-accept').click();
+  await expect(page.locator('#confirm-accept')).toBeEnabled();
+  await page.locator('#confirm-accept').click();
+  await expect(page.locator('#confirm-dialog')).toBeHidden();
+  await expect(page.locator('#overlay')).toBeHidden();
+  await expect(page.locator('#score')).toHaveText('000000');
+});
+
+const readCard = page => page.evaluate(() => JSON.parse(localStorage.getItem('common-ground-stages-v1')));
+const stageButton = (page, action, slot) => page.getByRole('button', { name: `${action} slot ${slot}`, exact: true });
+
+test('a zero-score round still requires confirmation and the memory card works on a small screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await begin(page);
+  await page.locator('#restart').click();
+  await expect(page.locator('#confirm-dialog')).toBeVisible();
+  await page.locator('#confirm-accept').click();
+  await expect(page.locator('#confirm-title')).toContainText('for sure');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await expect(page.locator('#score')).toHaveText('000000');
+  const pause = await page.locator('#pause-top').boundingBox();
+  const stages = await page.locator('#stages').boundingBox();
+  expect(pause.x).toBeGreaterThanOrEqual(0);
+  expect(stages.x + stages.width).toBeLessThanOrEqual(390);
+  await page.locator('#stages').click();
+  await stageButton(page, 'save', 3).click();
+  await expect(stageButton(page, 'load', 3)).toBeEnabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.locator('#stages-done').click();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+});
+
+test('three memory slots persist exact stages, confirm destructive actions and restore paused', async ({ page }) => {
+  await begin(page);
+  await page.keyboard.press('Space');
+  await page.keyboard.press('ControlRight');
+  await page.keyboard.press('KeyV');
+  await page.getByRole('button', { name: 'Save stages', exact: true }).click();
+  await expect(page.locator('.stage-card')).toHaveCount(3);
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await stageButton(page, 'save', 1).click();
+  const original = (await readCard(page)).slots[0].game;
+  await expect(page.locator('#stages-status')).toContainText('Stage saved');
+  await stageButton(page, 'save', 2).click();
+  await page.locator('#stages-done').click();
+  await page.locator('#pause-top').click();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Save stages', exact: true }).click();
+  await stageButton(page, 'save', 3).click();
+  const updated = (await readCard(page)).slots[2].game;
+  expect(updated).not.toEqual(original);
+  await stageButton(page, 'save', 1).click();
+  await expect(page.locator('#confirm-title')).toContainText('Overwrite');
+  await page.keyboard.press('Escape');
+  expect((await readCard(page)).slots[0].game).toEqual(original);
+  await stageButton(page, 'save', 1).click();
+  await page.locator('#confirm-accept').click();
+  await expect(page.locator('#stages-status')).toContainText('Stage saved');
+  expect((await readCard(page)).slots[0].game).toEqual(updated);
+  await stageButton(page, 'load', 2).click();
+  await page.locator('#confirm-cancel').click();
+  await expect(page.locator('#score')).toHaveText(String(updated.score).padStart(6, '0'));
+  await stageButton(page, 'load', 2).click();
+  await page.locator('#confirm-accept').click();
+  await expect(page.locator('#stages-dialog')).toBeHidden();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await expect(page.locator('#score')).toHaveText(String(original.score).padStart(6, '0'));
+  await expect(page.locator('#exchange-status')).toContainText('Player 1 asks');
+  await page.reload();
+  await page.getByRole('button', { name: 'Save stages', exact: true }).click();
+  await stageButton(page, 'load', 2).click();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await page.getByRole('button', { name: 'Save stages', exact: true }).click();
+  await stageButton(page, 'save', 3).click();
+  await page.locator('#confirm-accept').click();
+  await expect(page.locator('#stages-status')).toContainText('Stage saved');
+  expect((await readCard(page)).slots[2].game).toEqual(original);
+  await stageButton(page, 'delete', 1).click();
+  await page.locator('#confirm-cancel').click();
+  expect((await readCard(page)).slots[0]).not.toBeNull();
+  await stageButton(page, 'delete', 1).click();
+  await page.locator('#confirm-accept').click();
+  await expect(page.locator('#stages-status')).toContainText('deleted');
+  expect((await readCard(page)).slots[0]).toBeNull();
+  expect((await readCard(page)).slots[1].game).toEqual(original);
+});
+
+test('storage failures and corrupted stages are surfaced without changing valid saves', async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'common-ground-stages-v1' && window.failStageWrites) throw new DOMException('Full', 'QuotaExceededError');
+      return original.call(this, key, value);
+    };
+  });
+  await begin(page);
+  await page.getByRole('button', { name: 'Save stages', exact: true }).click();
+  await stageButton(page, 'save', 1).click();
+  const original = await readCard(page);
+  await page.evaluate(() => { window.failStageWrites = true; });
+  await stageButton(page, 'save', 2).click();
+  await expect(page.locator('#stages-status')).toContainText('Nothing was saved or changed');
+  expect(await readCard(page)).toEqual(original);
+  await stageButton(page, 'delete', 1).click();
+  await page.locator('#confirm-accept').click();
+  await expect(page.locator('#stages-status')).toContainText('Storage failed');
+  await expect(stageButton(page, 'load', 1)).toBeEnabled();
+  expect(await readCard(page)).toEqual(original);
+  await page.evaluate(() => {
+    window.failStageWrites = false;
+    const card = JSON.parse(localStorage.getItem('common-ground-stages-v1'));
+    card.slots[1] = { savedAt: Date.now(), game: { version: 99 } };
+    localStorage.setItem('common-ground-stages-v1', JSON.stringify(card));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Save stages', exact: true }).click();
+  await expect(page.locator('.stage-card[data-slot="1"]')).toContainText('Unreadable stage');
+  await expect(stageButton(page, 'load', 2)).toBeDisabled();
+  await stageButton(page, 'load', 1).click();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+});
+
+test('speed option changes and persists without changing score rules; loaded XP is not credited again', async ({ page }) => {
+  await begin(page);
+  await page.locator('#settings').hover();
+  await page.locator('#setting-speed').uncheck();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await page.locator('#settings-done').click();
+  await expect(page.locator('#xp-caption')).toContainText('Steady speed');
+  await page.getByRole('button', { name: 'Save stages', exact: true }).click();
+  await stageButton(page, 'save', 1).click();
+  expect((await readCard(page)).slots[0].game.progressiveSpeed).toBe(false);
+  await page.evaluate(() => {
+    const card = JSON.parse(localStorage.getItem('common-ground-stages-v1'));
+    Object.assign(card.slots[0].game, { xp: 100, lines: 1, score: 100 });
+    localStorage.setItem('common-ground-stages-v1', JSON.stringify(card));
+    const preferences = JSON.parse(localStorage.getItem('common-ground-v1'));
+    preferences.lifetimeXP = 100;
+    localStorage.setItem('common-ground-v1', JSON.stringify(preferences));
+  });
+  await page.reload();
+  await page.locator('#settings').hover();
+  await expect(page.locator('#setting-speed')).not.toBeChecked();
+  await page.locator('#setting-speed').check();
+  await page.locator('#settings-done').click();
+  await page.getByRole('button', { name: 'Save stages', exact: true }).click();
+  await stageButton(page, 'load', 1).click();
+  await expect(page.locator('#xp-caption')).toContainText('Steady speed');
+  await expect(page.locator('#xp')).toHaveText('100 XP');
+  await expect(page.locator('#xp-caption')).toContainText('100 lifetime XP');
+  await page.locator('#pause-top').click();
+  await page.keyboard.press('Space');
+  await page.locator('#pause-top').click();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('common-ground-v1')).lifetimeXP)).toBe(100);
+});
+
+test('focus previews draw larger, sharp pieces without player labels below active blocks', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.boardLabels = [];
+    const original = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+      if (this.canvas.id === 'board') window.boardLabels.push(text);
+      return original.call(this, text, ...args);
+    };
+  });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await begin(page);
+  await page.locator('#focus').click();
+  await page.keyboard.press('KeyC');
+  await page.locator('#pause-top').click();
+  const next = await page.locator('#next-0').boundingBox();
+  const hold = await page.locator('#hold').boundingBox();
+  expect(next.height).toBeGreaterThanOrEqual(250);
+  expect(hold.width).toBeGreaterThanOrEqual(170);
+  expect(hold.height).toBeGreaterThanOrEqual(90);
+  for (const id of ['next-0', 'hold']) {
+    const size = await page.locator(`#${id}`).evaluate(canvas => {
+      const dpr = Math.min(devicePixelRatio, 2);
+      const rect = canvas.getBoundingClientRect();
+      const { data, width, height } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      let run = 0, maxRun = 0;
+      for (let y = 0; y < height; y++) {
+        run = 0;
+        for (let x = 0; x < width; x++) {
+          run = data[(y * width + x) * 4 + 3] > 200 ? run + 1 : 0;
+          maxRun = Math.max(maxRun, run);
+        }
+      }
+      return { drawnBlock: maxRun / dpr, actualWidth: canvas.width, expectedWidth: Math.round(rect.width * dpr) };
+    });
+    expect(size.actualWidth).toBe(size.expectedWidth);
+    expect(size.drawnBlock).toBeGreaterThan(25);
+  }
+  expect(await page.evaluate(() => window.boardLabels.some(label => /^P[12]$/.test(label)))).toBe(false);
+});

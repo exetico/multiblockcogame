@@ -36,6 +36,7 @@ export class Renderer {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.resize = new ResizeObserver(() => this.measure());
     this.resize.observe(board);
+    for (const canvas of [...previews, hold]) this.resize.observe(canvas);
     this.measure();
   }
 
@@ -46,7 +47,10 @@ export class Renderer {
     this.height = rect.height;
     this.canvas.width = Math.round(rect.width * this.dpr);
     this.canvas.height = Math.round(rect.height * this.dpr);
-    if (this.lastGame) this.draw(this.lastGame);
+    if (this.lastGame) {
+      this.draw(this.lastGame);
+      this.updatePreviews(this.lastGame);
+    }
   }
 
   flash(rows) {
@@ -109,15 +113,6 @@ export class Renderer {
           ctx.fillText('⇄', (x + 0.5) * sx, (y + 0.73) * sy);
         }
       }
-      const visible = cells(p.piece).filter(([, y]) => y >= 0);
-      if (visible.length) {
-        const x = visible.reduce((sum, [x]) => sum + x + 0.5, 0) / visible.length;
-        const y = Math.max(...visible.map(([, y]) => y)) + 1;
-        ctx.fillStyle = OWNER[p.id];
-        ctx.font = `600 ${Math.max(7, sx * 0.32)}px system-ui`;
-        ctx.textAlign = 'center';
-        ctx.fillText(`P${p.id + 1}`, x * sx, y * sy + sx * 0.5);
-      }
     });
     const remaining = this.flashUntil - performance.now();
     if (remaining > 0) {
@@ -128,7 +123,13 @@ export class Renderer {
 
   mini(canvas, items, parked = false) {
     const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
+    const { width: w, height: h } = canvas.getBoundingClientRect();
+    const width = Math.round(w * this.dpr), height = Math.round(h * this.dpr);
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     if (!items.length || !items[0]) {
       ctx.strokeStyle = '#7b999544';
@@ -147,7 +148,7 @@ export class Renderer {
       const shape = cells({ ...item, x: 0, y: 0, rotation: 0 });
       const minX = Math.min(...shape.map(([x]) => x)), maxX = Math.max(...shape.map(([x]) => x));
       const minY = Math.min(...shape.map(([, y]) => y)), maxY = Math.max(...shape.map(([, y]) => y));
-      const size = parked ? 18 : (index === 0 ? 22 : 17);
+      const size = Math.max(0, Math.min((w - 32) / 4, (segment - 8) / 2)) * (parked || index === 0 ? 1 : 0.86);
       const ox = (w - (maxX - minX + 1) * size) / 2;
       const oy = segment * index + (segment - (maxY - minY + 1) * size) / 2;
       shape.forEach(([x, y]) => block(ctx, ox + (x - minX) * size, oy + (y - minY) * size, size, item.type, index === 0 ? 1 : 0.55));

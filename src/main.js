@@ -12,7 +12,7 @@ function toast(message) {
   toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4200);
 }
 
-const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, focus: true, grid: true, hints: true, layoutChosen: false, controls: null };
+const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, progressiveSpeed: true, focus: true, grid: true, hints: true, layoutChosen: false, controls: null };
 let saved = { ...defaults };
 let storageAvailable = true;
 try {
@@ -24,6 +24,7 @@ try {
       lifetimeXP: Number.isSafeInteger(parsed.lifetimeXP) && parsed.lifetimeXP >= 0 ? parsed.lifetimeXP : 0,
       sound: typeof parsed.sound === 'boolean' ? parsed.sound : true,
       relays: typeof parsed.relays === 'boolean' ? parsed.relays : true,
+      progressiveSpeed: typeof parsed.progressiveSpeed === 'boolean' ? parsed.progressiveSpeed : true,
       focus: typeof parsed.focus === 'boolean' ? parsed.focus : true,
       grid: typeof parsed.grid === 'boolean' ? parsed.grid : true,
       hints: typeof parsed.hints === 'boolean' ? parsed.hints : true,
@@ -79,7 +80,7 @@ const audio = new Sound(message => {
 });
 audio.enabled = saved.sound;
 const renderer = new Renderer($('board'), [$('next-0'), $('next-1')], $('hold'));
-let game = new Game({ relays: saved.relays });
+let game = new Game({ relays: saved.relays, progressiveSpeed: saved.progressiveSpeed });
 let state = 'ready';
 let lastTime = performance.now();
 let creditedXP = 0;
@@ -108,7 +109,7 @@ const dockHome = document.createComment('Shared space home');
 scoreboard.before(scoreHome);
 dock.before(dockHome);
 const wideScreen = window.matchMedia('(min-width: 701px)');
-const isDialogOpen = () => $('help-dialog').open || $('settings-dialog').open || $('layout-dialog').open || $('controller-dialog').open || $('controls-dialog').open;
+const isDialogOpen = () => document.querySelector('dialog[open]') !== null;
 
 function applyDisplay() {
   document.body.classList.toggle('focus-mode', saved.focus);
@@ -117,6 +118,7 @@ function applyDisplay() {
   $('setting-focus').checked = saved.focus;
   $('setting-grid').checked = saved.grid;
   $('setting-hints').checked = saved.hints;
+  $('setting-speed').checked = game.progressiveSpeed;
   renderer.showGrid = saved.grid;
   if (saved.focus && wideScreen.matches) {
     document.querySelector('.player-one').append(scoreboard);
@@ -134,6 +136,9 @@ function updateOverlay() {
   $('overlay').hidden = active;
   $('pause').disabled = state === 'ready' || state === 'over';
   $('pause').innerHTML = `${state === 'paused' ? 'RESUME' : 'PAUSE'} <kbd>ESC</kbd>`;
+  $('pause-top').disabled = $('pause').disabled;
+  $('pause-top').setAttribute('aria-label', state === 'paused' ? 'Resume game' : 'Pause game');
+  $('pause-top').firstElementChild.textContent = state === 'paused' ? '▶' : 'Ⅱ';
   $('start-settings').hidden = state === 'paused';
   $('overlay-help').hidden = state === 'paused';
   if (state === 'paused') {
@@ -160,7 +165,7 @@ function start() {
   } else {
     saved.relays = $('relay-toggle').checked;
     save();
-    game = new Game({ relays: saved.relays });
+    game = new Game({ relays: saved.relays, progressiveSpeed: saved.progressiveSpeed });
     creditedXP = 0;
     state = 'playing';
     hudSnapshot = '';
@@ -177,6 +182,7 @@ function start() {
 
 function pause(keepFocus = false) {
   if (state !== 'playing' && state !== 'paused') return;
+  if (state === 'paused' && isDialogOpen()) return;
   state = state === 'playing' ? 'paused' : 'playing';
   persistProgress();
   audio.unlock();
@@ -304,7 +310,7 @@ function persistProgress() {
 }
 
 function updateHUD() {
-  const signature = [game.score, game.lines, game.level, game.xp, saved.best, game.exchangeRequest, game.hold?.type, game.hold?.relayOwner,
+  const signature = [game.score, game.lines, game.level, game.xp, saved.best, game.progressiveSpeed, game.exchangeRequest, game.hold?.type, game.hold?.relayOwner,
     ...game.players.flatMap(p => [p.piece?.relayOwner, p.canHold])].join(':');
   if (signature !== hudSnapshot) {
     hudSnapshot = signature;
@@ -314,7 +320,7 @@ function updateHUD() {
     $('best').textContent = saved.best.toLocaleString();
     $('xp').textContent = `${game.xp.toLocaleString()} XP`;
     $('xp-fill').style.width = `${(game.lines % 10) * 10}%`;
-    $('xp-caption').textContent = `${10 - game.lines % 10} rows to level ${game.level + 1} · ${saved.lifetimeXP.toLocaleString()} lifetime XP`;
+    $('xp-caption').textContent = `${10 - game.lines % 10} rows to level ${game.level + 1} · ${game.progressiveSpeed ? 'Progressive speed' : 'Steady speed'} · ${saved.lifetimeXP.toLocaleString()} lifetime XP`;
     $('hold-status').textContent = game.hold?.relayOwner !== null && game.hold ? `Relay: player ${2 - game.hold.relayOwner} can finish handoff` : 'Either player can use it';
     $('exchange-status').textContent = game.exchangeRequest === null ? 'Both press exchange to trade' : `Player ${game.exchangeRequest + 1} asks — partner, confirm!`;
     game.players.forEach(p => {
@@ -379,7 +385,7 @@ function frame(now) {
   const dt = Math.min(100, Math.max(0, now - lastTime));
   lastTime = now;
   input.update(dt, game);
-  if (state === 'playing') {
+  if (state === 'playing' && !isDialogOpen()) {
     game.tick(dt);
     processEvents();
   }
@@ -390,6 +396,7 @@ function frame(now) {
 
 $('play').addEventListener('click', start);
 $('pause').addEventListener('click', () => pause());
+$('pause-top').addEventListener('click', () => pause());
 $('focus').addEventListener('click', () => {
   saved.focus = !saved.focus;
   applyDisplay();
@@ -444,6 +451,13 @@ for (const [id, key] of [['setting-focus', 'focus'], ['setting-grid', 'grid'], [
     else save();
   });
 }
+$('setting-speed').addEventListener('change', () => {
+  saved.progressiveSpeed = $('setting-speed').checked;
+  game.progressiveSpeed = saved.progressiveSpeed;
+  game.players.forEach(player => { player.gravity = 0; });
+  save();
+  updateHUD();
+});
 for (const id of ['close-settings', 'settings-done']) {
   $(id).addEventListener('click', closeSettings);
 }
@@ -644,13 +658,222 @@ $('reset-tab').addEventListener('click', () => {
 $('reset-all').addEventListener('click', () => { stopCapture(); commitBindings(cloneBindings(), 'All keys and buttons restored to defaults.'); });
 for (const id of ['close-controls', 'controls-done']) $(id).addEventListener('click', () => $('controls-dialog').close());
 $('controls-dialog').addEventListener('close', () => { stopCapture(); input.reset(); blurButton(); });
-$('restart').addEventListener('click', () => {
+
+let confirmation = null;
+let confirmationTimer;
+function confirmAction({ title, description, accept, twice = false, action, cancel = 'CANCEL' }) {
   if (state === 'playing') pause();
-  if ((state === 'paused' && (game.score || game.players.some(p => p.queue.length && p.canHold === false))) || game.lines) {
-    if (!window.confirm('Start a new round? Your best score and earned XP are already saved.')) { blurButton(); return; }
+  input.reset();
+  confirmation = { accept, twice, action, second: false };
+  $('confirm-title').textContent = title;
+  $('confirm-description').textContent = description;
+  $('confirm-cancel').textContent = cancel;
+  $('confirm-accept').textContent = twice ? 'CONTINUE' : accept;
+  $('confirm-accept').disabled = false;
+  $('confirm-dialog').showModal();
+  $('confirm-cancel').focus();
+}
+$('confirm-accept').addEventListener('click', () => {
+  if (!confirmation) return;
+  if (confirmation.twice && !confirmation.second) {
+    confirmation.second = true;
+    $('confirm-title').textContent = 'Discard this round for sure?';
+    $('confirm-description').textContent = 'This cannot be undone unless you saved a stage. Your save slots, best score and lifetime XP will remain.';
+    $('confirm-accept').textContent = confirmation.accept;
+    $('confirm-accept').disabled = true;
+    $('confirm-cancel').focus();
+    confirmationTimer = setTimeout(() => { $('confirm-accept').disabled = false; }, 500);
+    return;
   }
-  state = 'ready';
-  start();
+  const action = confirmation.action;
+  confirmation = null;
+  $('confirm-dialog').close();
+  action();
+});
+$('confirm-cancel').addEventListener('click', () => $('confirm-dialog').close());
+$('confirm-dialog').addEventListener('close', () => {
+  clearTimeout(confirmationTimer);
+  confirmation = null;
+  input.reset();
+  blurButton();
+});
+
+const STAGE_STORAGE = 'common-ground-stages-v1';
+let stageSlots = [null, null, null];
+const stageErrors = [null, null, null];
+function restoreSlot(slot) {
+  if (!slot || !Number.isSafeInteger(slot.savedAt) || !Number.isFinite(new Date(slot.savedAt).getTime())) {
+    throw new Error('This slot has invalid save information.');
+  }
+  return Game.restore(slot.game);
+}
+try {
+  const raw = localStorage.getItem(STAGE_STORAGE);
+  if (raw) {
+    const card = JSON.parse(raw);
+    if (card?.version !== 1 || !Array.isArray(card.slots) || card.slots.length !== 3) {
+      throw new Error('Unsupported memory-card format.');
+    }
+    stageSlots = card.slots;
+    stageSlots.forEach((slot, index) => {
+      if (slot === null) return;
+      try { restoreSlot(slot); }
+      catch (error) {
+        stageErrors[index] = error.message;
+        console.warn(`Could not read stage slot ${index + 1}.`, error);
+      }
+    });
+    if (stageErrors.some(Boolean)) toast('A saved stage is unreadable. Open the memory card to replace or delete that slot.');
+  }
+} catch (error) {
+  console.warn('Could not read saved stages.', error);
+  toast('Saved stages are unavailable or invalid. No stage was loaded.');
+}
+
+function writeSlots(next, message) {
+  try {
+    localStorage.setItem(STAGE_STORAGE, JSON.stringify({ version: 1, slots: next }));
+  } catch (error) {
+    console.warn('Could not save the memory card.', error);
+    $('stages-status').textContent = 'Storage failed. Nothing was saved or changed. Free browser storage or allow site data and try again.';
+    return false;
+  }
+  next.forEach((slot, index) => { if (slot !== stageSlots[index]) stageErrors[index] = null; });
+  stageSlots = next;
+  $('stages-status').textContent = message;
+  renderStages();
+  return true;
+}
+
+function renderStages() {
+  const canSave = state === 'paused' && !game.over;
+  $('stage-slots').replaceChildren(...stageSlots.map((slot, index) => {
+    const card = document.createElement('section');
+    card.className = `stage-card${slot === null ? ' empty' : ''}`;
+    card.dataset.slot = String(index);
+    const icon = document.createElement('span');
+    icon.className = 'memory-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '▣';
+    const details = document.createElement('div');
+    const name = document.createElement('h3');
+    name.textContent = `SLOT ${index + 1}`;
+    const info = document.createElement('p');
+    info.textContent = stageErrors[index] ? `Unreadable stage: ${stageErrors[index]}` : slot === null ? 'Empty · your next adventure' :
+      `${slot.game.score.toLocaleString()} points · ${slot.game.lines} rows · level ${slot.game.level} · ${slot.game.progressiveSpeed ? 'Progressive' : 'Steady'} speed`;
+    details.append(name, info);
+    if (slot !== null && !stageErrors[index]) {
+      const date = document.createElement('small');
+      date.textContent = new Date(slot.savedAt).toLocaleString();
+      details.append(date);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'stage-actions';
+    for (const [label, handler, disabled] of [
+      ['SAVE', () => saveStage(index), !canSave],
+      ['LOAD', () => loadStage(index), slot === null || Boolean(stageErrors[index])],
+      ['DELETE', () => deleteStage(index), slot === null],
+    ]) {
+      const button = document.createElement('button');
+      button.className = 'text-button';
+      button.textContent = label;
+      button.setAttribute('aria-label', `${label.toLowerCase()} slot ${index + 1}`);
+      button.disabled = disabled;
+      button.addEventListener('click', handler);
+      actions.append(button);
+    }
+    card.append(icon, details, actions);
+    return card;
+  }));
+}
+
+function saveStage(index) {
+  if (state !== 'paused' || game.over) {
+    $('stages-status').textContent = 'Start an unfinished round before saving a stage.';
+    return;
+  }
+  const action = () => {
+    persistProgress();
+    const slot = { savedAt: Date.now(), game: game.snapshot() };
+    const next = [...stageSlots];
+    next[index] = slot;
+    writeSlots(next, `Stage saved to slot ${index + 1}. Your round is still paused.`);
+  };
+  if (stageSlots[index] !== null) confirmAction({
+    title: `Overwrite slot ${index + 1}?`, description: 'This replaces the saved stage with your current paused round.',
+    accept: 'OVERWRITE STAGE', action,
+  });
+  else action();
+}
+
+function loadStage(index) {
+  let restored;
+  try { restored = restoreSlot(stageSlots[index]); }
+  catch (error) {
+    console.warn(`Could not load stage slot ${index + 1}.`, error);
+    $('stages-status').textContent = `Stage not loaded: ${error.message}`;
+    return;
+  }
+  const action = () => {
+    persistProgress();
+    game = restored;
+    creditedXP = game.xp;
+    saved.relays = game.relays;
+    saved.progressiveSpeed = game.progressiveSpeed;
+    $('relay-toggle').checked = game.relays;
+    save();
+    state = 'paused';
+    hudSnapshot = '';
+    previewSnapshot = '';
+    renderer.flashUntil = 0;
+    $('announcement').classList.remove('show');
+    clearTimeout(announcementTimer);
+    $('stages-dialog').close();
+    input.reset();
+    lastTime = performance.now();
+    applyDisplay();
+    updateOverlay();
+    updateHUD();
+    renderer.draw(game);
+    toast(`Slot ${index + 1} loaded. Resume when both players are ready.`);
+  };
+  if (state === 'paused') confirmAction({
+    title: `Load slot ${index + 1}?`, description: 'Your current paused round will be replaced. Save it to another slot first if you want to keep it.',
+    accept: 'REPLACE ROUND & LOAD', action,
+  });
+  else action();
+}
+
+function deleteStage(index) {
+  confirmAction({
+    title: `Delete slot ${index + 1}?`, description: 'This saved stage will be removed. Your current round is not affected.',
+    accept: 'DELETE STAGE', action: () => {
+      const next = [...stageSlots];
+      next[index] = null;
+      writeSlots(next, `Slot ${index + 1} deleted.`);
+    },
+  });
+}
+$('stages').addEventListener('click', () => {
+  closeSettings();
+  if (isDialogOpen()) return;
+  if (state === 'playing') pause();
+  input.reset();
+  $('stages-status').textContent = state === 'ready' || state === 'over' ? 'Start a round to save, or load an existing stage.' : 'Paused. Choose a slot to save or load.';
+  renderStages();
+  $('stages-dialog').showModal();
+});
+for (const id of ['close-stages', 'stages-done']) $(id).addEventListener('click', () => $('stages-dialog').close());
+$('stages-dialog').addEventListener('close', () => { input.reset(); blurButton(); });
+$('restart').addEventListener('click', () => {
+  closeSettings();
+  if (isDialogOpen()) return;
+  if (state === 'playing') pause();
+  confirmAction({
+    title: 'Start a new game?', description: 'Save your current stage using the memory-card icon first if you want to return to it. Best score, lifetime XP and save slots will be kept.',
+    accept: 'DISCARD & START NEW GAME', twice: state === 'paused', cancel: 'KEEP MY ROUND',
+    action: () => { state = 'ready'; start(); },
+  });
 });
 $('sound').addEventListener('click', () => {
   audio.enabled = !audio.enabled;

@@ -56,6 +56,26 @@ connected controllers' side assignments on disconnect; side switching changes
 input ownership only and takes place while the setup dialog gates gameplay.
 Show controller hints for assigned players and retain keyboard fallback.
 Active pieces have no player-colored ownership borders; preserve landing ghosts.
+Do not draw player labels beneath active pieces. Preview canvases measure
+their rendered dimensions and device pixel ratio; observe their sizes alongside
+the board so layout changes redraw previews without blurring or clipping.
+
+Progressive speed defaults on and depends on cleared rows, not wall-clock
+time. Off keeps gravity at 900 ms; level, score and XP rules stay unchanged.
+Settings changes pause, apply to the current game and persist for new games.
+
+`Game#snapshot` and `Game.restore` implement versioned, DOM-free stage saves.
+Validate all board, piece, queue/bag, timer and scoring fields and legal active
+piece positions before replacing a game. Restore methods without consuming
+random draws, and do not persist events, input state or transient effects.
+Three manual slots live under `common-ground-stages-v1`, separate from progress.
+Write storage successfully before changing a slot in memory. Report corrupt
+slots and storage errors visibly. Loaded games are paused; set `creditedXP`
+to their existing XP to avoid crediting it again. Save/load preserves engine
+timers, hold limits, relays, pending exchanges and speed mode.
+Every dialog gates both input and ticking. New Game pauses even a zero-score
+unfinished round and uses two explicit confirmations; cancel never resumes.
+Loading over a live round, overwriting and deleting slots require confirmation.
 
 Bindings are data. Never hardcode keys or button indexes in gameplay, hints,
 help (`[data-bind]`), or toasts; render them from the current bindings.

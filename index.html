@@ -15,6 +15,8 @@
         <a class="brand" href="./" aria-label="Common Ground home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>COMMON<span class="brand-light">GROUND</span></span></a>
         <span class="edition"><span class="status-dot"></span> LOCAL CO-OP <span class="edition-extra">/ TWO PLAYERS, ONE TEAM</span></span>
         <nav class="utility" aria-label="Game settings">
+          <button id="pause-top" class="icon-button" aria-label="Pause game" title="Pause / resume (Escape)" disabled><span aria-hidden="true">Ⅱ</span></button>
+          <button id="stages" class="icon-button" aria-label="Save stages" title="Memory card: save / load stages"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 3h13l3 3v15H4z"/><path d="M8 3v6h8V3M8 21v-8h8v8"/></svg></button>
           <button id="focus" class="icon-button focus-button" aria-label="Toggle focus mode" aria-pressed="true" title="Focus / Classic layout"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18"/></svg></button>
           <button id="settings" class="icon-button" aria-label="Display settings" aria-controls="settings-dialog" aria-expanded="false" aria-haspopup="dialog" title="Hover for display settings">⚙</button>
           <button id="sound" class="icon-button" aria-label="Mute sound" title="Toggle sound">♪</button>
@@ -92,16 +94,37 @@
 
     <dialog id="settings-dialog" aria-labelledby="settings-title">
       <div class="dialog-heading"><span class="eyebrow">MAKE ROOM TO PLAY</span><button id="close-settings" class="icon-button" aria-label="Close display settings">×</button></div>
-      <h2 id="settings-title">Display settings</h2>
-      <p>Display changes only. The field stays 12 × 12, with two shared columns. Your round and earned progress stay intact.</p>
+      <h2 id="settings-title">Game &amp; display settings</h2>
+      <p>The field stays 12 × 12, with two shared columns. Display options preserve your round; progressive speed changes only the falling pace.</p>
       <div class="display-options">
         <label><span><strong>Focus mode</strong><small>A larger field, side-mounted score and shared space on wide screens.</small></span><input id="setting-focus" type="checkbox" /></label>
         <label><span><strong>Grid lines</strong><small>Show cell guides. The shared columns remain highlighted either way.</small></span><input id="setting-grid" type="checkbox" checked /></label>
         <label><span><strong>Keyboard hints</strong><small>Compact controls below each player's next pieces.</small></span><input id="setting-hints" type="checkbox" checked /></label>
+        <label><span><strong>Progressive speed</strong><small>Faster falling every ten cleared rows. Off keeps a steady starting pace. Changes pause play and apply to this round.</small></span><input id="setting-speed" type="checkbox" checked /></label>
       </div>
       <button id="settings-remap" class="text-button remap-link">CUSTOMIZE KEYS &amp; BUTTONS →</button>
       <p class="help-fineprint">Opening settings pauses play. Move away to close, then resume when ready. Focus is independent of fullscreen.</p>
       <button id="settings-done" class="primary-button">DONE <span>↗</span></button>
+    </dialog>
+
+    <dialog id="stages-dialog" aria-labelledby="stages-title">
+      <div class="dialog-heading"><span class="eyebrow">YOUR LOCAL MEMORY CARD</span><button id="close-stages" class="icon-button" aria-label="Close save stages">×</button></div>
+      <h2 id="stages-title">Save your<br /><em>shared space.</em></h2>
+      <p>Three manual save slots in this browser. Save the exact board, both active pieces, next pieces, shared park, score and speed setting. Load a stage later, then resume when you are both ready.</p>
+      <div id="stage-slots" class="stage-slots"></div>
+      <p id="stages-status" aria-live="polite"></p>
+      <p class="help-fineprint">Opening this card pauses play. Saving does not resume. Saves stay on this device and browser; clearing site data removes them. Previously earned XP is not counted again when loading. Overwriting, deleting or replacing an active round requires confirmation.</p>
+      <button id="stages-done" class="primary-button">DONE <span>↗</span></button>
+    </dialog>
+
+    <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+      <span class="eyebrow">BEFORE YOU CONTINUE</span>
+      <h2 id="confirm-title">Start a new game?</h2>
+      <p id="confirm-description"></p>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" class="primary-button" autofocus>KEEP MY ROUND</button>
+        <button id="confirm-accept" class="danger-button">CONTINUE</button>
+      </div>
     </dialog>
 
     <dialog id="controller-dialog" aria-labelledby="controller-title">
@@ -145,6 +168,7 @@
       <p>Left player: <kbd data-bind="0:left">A</kbd> <kbd data-bind="0:down">S</kbd> <kbd data-bind="0:right">D</kbd> move, <kbd data-bind="0:cw">W</kbd> / <kbd data-bind="0:ccw">Q</kbd> rotate, <kbd data-bind="0:drop">SPACE</kbd> drops. Right player: <kbd data-bind="1:left">←</kbd> <kbd data-bind="1:down">↓</kbd> <kbd data-bind="1:right">→</kbd> move, <kbd data-bind="1:cw">↑</kbd> / <kbd data-bind="1:ccw">R SHIFT</kbd> rotate, <kbd data-bind="1:drop">ENTER</kbd> drops. Keys are physical positions, so they work on Danish and other layouts. Change any key or controller button under <strong>CONTROLS</strong> in the footer.</p>
       <section class="gamepad-help"><h3>Controllers welcome.</h3><p>Connect a standard controller and press a button. The first controller plays <strong>right</strong>; the second plays <strong>left</strong>. Keyboards stay active.</p><div class="pad-controls pad-legend"></div></section>
       <p class="help-fineprint">Ghost outlines show the landing position. Escape pauses. Use FOCUS for a larger field and the gear for display settings. Sound is synthesized on your device. Best score and lifetime team XP stay in this browser. A keyboard or controller is required; touch controls are not included.</p>
+      <p>Use the pause button beside the memory-card icon, Escape, or your controller's pause button. New Game pauses first and asks twice before discarding an unfinished round. The memory-card icon opens three save slots. Progressive speed is on by default: every ten cleared rows speeds up falling, not elapsed time. Turn it off in settings for a steady pace; levels, score and XP still advance.</p>
       <button id="help-done" class="primary-button">GOT IT <span>↗</span></button>
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>

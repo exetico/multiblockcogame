@@ -6,6 +6,123 @@ const make = options => new Game({ random: () => 0.43, relays: false, ...options
 const piece = (type, x, y, extra = {}) => ({ type, x, y, rotation: 0, relayOwner: null, lastRotate: false, ...extra });
 const solid = () => ({ type: 'J', owner: 0 });
 
+test('progressive speed follows cleared rows; steady mode keeps starting gravity', () => {
+  const game = make();
+  assert.equal(game.gravityInterval, 900);
+  game.level = 2;
+  game.lines = 10;
+  assert.equal(game.gravityInterval, 711);
+  game.progressiveSpeed = false;
+  assert.equal(game.gravityInterval, 900);
+  game.level = 100;
+  assert.equal(game.gravityInterval, 900);
+  game.progressiveSpeed = true;
+  assert.equal(game.gravityInterval, 65);
+});
+
+test('the tenth cleared row speeds progressive mode up, but not steady mode or XP', () => {
+  const games = [make(), make({ progressiveSpeed: false })];
+  for (const game of games) {
+    for (let n = 0; n < 10; n++) game.tick(100);
+    assert.equal(game.level, 1, 'elapsed time does not increase level');
+    assert.equal(game.gravityInterval, 900);
+    game.lines = 9;
+    game.xp = 900;
+    game.board[11] = Array.from({ length: WIDTH }, (_, x) => x === 2 ? null : solid());
+    game.players[0].piece = piece('I', 0, 8, { rotation: 1 });
+    game.lock(0);
+    assert.equal(game.lines, 10);
+    assert.equal(game.level, 2);
+    assert.equal(game.score, 100);
+    assert.equal(game.xp, 1000);
+  }
+  assert.equal(games[0].gravityInterval, 711);
+  assert.equal(games[1].gravityInterval, 900);
+});
+
+test('saved stages round-trip all engine state and continue identically', () => {
+  const game = make({ relays: true, progressiveSpeed: false });
+  game.hardDrop(0);
+  game.park(1);
+  game.move(0, -1);
+  game.rotate(1);
+  game.tick(63.5);
+  game.exchange(0);
+  const snapshot = game.snapshot();
+  let randomCalls = 0;
+  const restored = Game.restore(JSON.parse(JSON.stringify(snapshot)), { random: () => { randomCalls++; return 0.43; } });
+  assert.equal(randomCalls, 0, 'restoring does not consume random draws');
+  assert.deepEqual(restored.snapshot(), snapshot);
+  assert.deepEqual(restored.events, [], 'transient events are not replayed');
+  assert.notEqual(restored.board, game.board);
+  assert.notEqual(restored.players[0].piece, game.players[0].piece);
+  game.drainEvents();
+  for (const instance of [game, restored]) {
+    instance.exchange(1);
+    instance.hardDrop(1);
+    instance.hardDrop(0);
+    instance.tick(100);
+    instance.park(0);
+  }
+  assert.deepEqual(restored.snapshot(), game.snapshot());
+  assert.deepEqual(restored.drainEvents(), game.drainEvents());
+  snapshot.board[0][0] = solid();
+  assert.equal(restored.board[0][0], null, 'save data cannot mutate a restored game');
+});
+
+test('stages preserve scoring, relay handoffs and the remaining lock delay', () => {
+  const game = make({ relays: true });
+  game.players[0].piece = piece('O', 0, 10);
+  game.players[0].lockTime = 400;
+  game.players[0].canHold = false;
+  game.players[1].piece.relayOwner = 1;
+  game.hold = { type: 'T', relayOwner: 0 };
+  game.score = 2300;
+  game.xp = 1500;
+  game.lines = 10;
+  game.level = 2;
+  game.combo = 2;
+  game.backToBack = true;
+  const restored = Game.restore(game.snapshot());
+  assert.deepEqual(restored.snapshot(), game.snapshot());
+  restored.tick(99);
+  assert.equal(restored.board.flat().filter(Boolean).length, 0);
+  restored.tick(1);
+  assert.equal(restored.board.flat().filter(Boolean).length, 4);
+  assert.equal(restored.players[0].canHold, true);
+  assert.equal(restored.players[1].piece.relayOwner, 1);
+});
+
+test('stage validation rejects unsupported, malformed, unsafe and impossible states', () => {
+  const game = make();
+  assert.throws(() => Game.restore(null), /damaged/);
+  for (const corrupt of [
+    data => { data.version = 2; },
+    data => { data.board.pop(); },
+    data => { data.board[0][0] = { type: 'unknown', owner: 0 }; },
+    data => { data.players[0].piece.rotation = 9; },
+    data => { data.players[0].piece.x = 9; },
+    data => { data.players[0].piece.lastRotate = null; },
+    data => { data.players[0].gravity = Infinity; },
+    data => { data.players[0].lockTime = 500; },
+    data => { data.players[0].resets = 16; },
+    data => { data.players[0].queue = []; },
+    data => { data.players[0].bag = ['I', 'I']; },
+    data => { data.score = -10; },
+    data => { data.level = 3; },
+    data => { data.progressiveSpeed = 'false'; },
+    data => { data.exchangeRequest = 2; },
+    data => { data.hold = { type: 'T', relayOwner: 9 }; },
+    data => { data.board[11] = Array.from({ length: WIDTH }, solid); },
+  ]) {
+    const snapshot = game.snapshot();
+    corrupt(snapshot);
+    assert.throws(() => Game.restore(snapshot), /damaged/);
+  }
+  game.over = true;
+  assert.throws(() => game.snapshot(), /unfinished/);
+});
+
 test('12 × 12 board, two seven-column fields, exactly two shared columns', () => {
   const game = make();
   assert.equal(WIDTH, 12);
