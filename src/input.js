@@ -145,11 +145,14 @@ export class Input {
       }
       if (!this.keymap[event.code] || event.target.closest('button, input, a')) return;
       event.preventDefault();
+      const [id, action] = this.keymap[event.code];
+      if (event.repeat && (action === 'cw' || action === 'ccw')) {
+        this.pending.push([id, action]);
+      }
       if (!event.repeat) {
         this.keys.add(event.code);
-        const [id, action] = this.keymap[event.code];
         if (CONTINUOUS.has(action)) this.taps[id].add(action);
-        else this.pending.push([id, action]);
+        this.pending.push([id, action]);
       }
     });
     window.addEventListener('keyup', event => this.keys.delete(event.code));
@@ -168,6 +171,7 @@ export class Input {
     this.pending = [];
     this.previous = [new Set(), new Set()];
     this.repeat = [{ direction: 0, horizontal: 0, down: 0 }, { direction: 0, horizontal: 0, down: 0 }];
+    this.pieceSerials = [null, null];
   }
 
   pollPads() {
@@ -206,7 +210,6 @@ export class Input {
       const [id, action] = this.keymap[key] ?? [];
       if (CONTINUOUS.has(action)) actions[id].add(action);
     }
-    taps.forEach((set, id) => set.forEach(action => actions[id].add(action)));
     let menuPressed = false;
     for (const pad of this.pollPads()) {
       const slot = this.padSlots.find(slot => slot.index === pad.index);
@@ -234,14 +237,24 @@ export class Input {
     const apply = (id, action) => {
       if (action === 'cw' || action === 'ccw') game.rotate(id, action === 'cw' ? 1 : -1);
       else if (action === 'drop') game.hardDrop(id);
+      else if (action === 'left' || action === 'right') game.move(id, action === 'right' ? 1 : -1);
+      else if (action === 'down') game.move(id, 0, 1, true);
       else game[action](id);
     };
+    const serials = game.players?.map(player => player.serial);
+    const replaced = id => serials && game.players[id].serial !== serials[id];
     actions.forEach((set, id) => {
+      if (replaced(id)) return;
       const previous = this.previous[id];
       const repeat = this.repeat[id];
+      if (serials && serials[id] !== this.pieceSerials[id]) {
+        repeat.down = 35;
+        repeat.direction = 0;
+        repeat.horizontal = 0;
+      }
       const direction = Number(set.has('right')) - Number(set.has('left'));
       if (direction && (direction !== repeat.direction || taps[id].has(direction > 0 ? 'right' : 'left'))) {
-        game.move(id, direction);
+        if (!taps[id].has(direction > 0 ? 'right' : 'left')) game.move(id, direction);
         repeat.horizontal = 155;
       } else if (direction) {
         repeat.horizontal -= dt;
@@ -252,7 +265,7 @@ export class Input {
       }
       repeat.direction = direction;
       if (set.has('down')) {
-        if (taps[id].has('down')) repeat.down = 0;
+        if (taps[id].has('down')) repeat.down = 35 + dt;
         repeat.down -= dt;
         while (repeat.down <= 0) {
           game.move(id, 0, 1, true);
@@ -260,11 +273,13 @@ export class Input {
         }
       } else repeat.down = 0;
       for (const action of ['cw', 'ccw', 'park', 'exchange', 'drop']) {
+        if (replaced(id)) break;
         if (!set.has(action) || (previous.has(action) && !taps[id].has(action))) continue;
         apply(id, action);
       }
     });
-    pending.forEach(([id, action]) => apply(id, action));
+    pending.forEach(([id, action]) => { if (!replaced(id)) apply(id, action); });
+    if (serials) this.pieceSerials = serials;
     this.previous = actions;
   }
 }

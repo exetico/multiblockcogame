@@ -28,12 +28,12 @@ test('sub-frame key taps are delivered once, in order across players', () => {
     assert.deepEqual(calls, [['park', 1], ['exchange', 0], ['exchange', 1], ['drop', 0], ['drop', 1]]);
     input.update(16, game);
     assert.equal(calls.length, 5);
-    for (const code of ['KeyA', 'ArrowRight']) {
+    for (const code of ['KeyA', 'KeyA', 'ArrowRight', 'KeyD', 'KeyS']) {
       handlers.keydown({ code, repeat: false, target: { closest: () => null }, preventDefault() {} });
       handlers.keyup({ code });
     }
     input.update(16, game);
-    assert.deepEqual(calls.slice(-2), [['move', 0, -1], ['move', 1, 1]]);
+    assert.deepEqual(calls.slice(-5), [['move', 0, -1], ['move', 0, -1], ['move', 1, 1], ['move', 0, 1], ['move', 0, 0]]);
   } finally {
     globalThis.window = oldWindow;
   }
@@ -167,4 +167,60 @@ test('labels show layout characters when available, otherwise physical names', (
   assert.equal(keyLabel('ArrowUp', new Map([['ArrowUp', 'x']])), '↑');
   assert.equal(buttonLabel(0), 'A / CROSS');
   assert.equal(buttonLabel(20), 'BUTTON 20');
+});
+
+test('rapid rotation taps and keyboard repeats are delivered, but destructive key repeats are ignored', () => {
+  const handlers = {};
+  const oldWindow = globalThis.window;
+  globalThis.window = { addEventListener: (name, fn) => { handlers[name] = fn; } };
+  try {
+    const input = new Input({ onPause() {}, onActivate() {}, onPads() {}, isPlaying: () => true, isDialogOpen: () => false });
+    input.pollPads = () => [];
+    const calls = [];
+    const key = (code, repeat = false) => handlers.keydown({ code, repeat, target: { closest: () => null }, preventDefault() {} });
+    const game = { move() {}, rotate: (id, dir) => calls.push([id, dir]), exchange() {}, hardDrop() {} };
+    key('KeyE');
+    key('KeyE', true);
+    key('KeyE', true);
+    key('Comma');
+    key('Comma', true);
+    key('KeyL', true);
+    key('ArrowUp', true);
+    input.update(16, game);
+    assert.deepEqual(calls, [[0, 1], [0, 1], [0, 1], [1, -1], [1, -1]]);
+    input.update(16, game);
+    assert.equal(calls.length, 5);
+  } finally { globalThis.window = oldWindow; }
+});
+
+test('queued old-piece actions cannot drop or park its replacement in the same frame', () => {
+  const handlers = {};
+  const oldWindow = globalThis.window;
+  globalThis.window = { addEventListener: (name, fn) => { handlers[name] = fn; } };
+  try {
+    const input = new Input({ onPause() {}, onActivate() {}, onPads() {}, isPlaying: () => true, isDialogOpen: () => false });
+    input.pollPads = () => [];
+    const calls = [];
+    const game = {
+      players: [{ serial: 1 }, { serial: 1 }],
+      move: (...args) => calls.push(['move', ...args]),
+      hardDrop(id) { calls.push(['drop', id]); this.players[id].serial++; },
+      park: id => calls.push(['park', id]),
+      rotate: id => calls.push(['rotate', id]),
+    };
+    for (const code of ['Space', 'Space', 'KeyC', 'KeyE', 'ArrowUp']) {
+      handlers.keydown({ code, repeat: false, target: { closest: () => null }, preventDefault() {} });
+      handlers.keyup({ code });
+    }
+    input.update(16, game);
+    assert.deepEqual(calls, [['drop', 0], ['drop', 1]]);
+    handlers.keydown({ code: 'ArrowDown', repeat: false, target: { closest: () => null }, preventDefault() {} });
+    input.update(16, game);
+    assert.equal(calls.length, 3, 'a fresh soft-drop tap is delivered once');
+    input.update(19, game);
+    assert.equal(calls.length, 3, 'held drop timer starts fresh on the new piece');
+    input.update(16, game);
+    assert.equal(calls.length, 4);
+    assert.deepEqual(calls.at(-1), ['move', 1, 0, 1, true]);
+  } finally { globalThis.window = oldWindow; }
 });
