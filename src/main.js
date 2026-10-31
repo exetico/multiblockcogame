@@ -12,7 +12,7 @@ function toast(message) {
   toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4200);
 }
 
-const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, progressiveSpeed: true, focus: true, grid: true, hints: true, header: true, footer: true, layoutChosen: false, controls: null };
+const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, progressiveSpeed: true, focus: true, grid: true, hints: true, header: false, footer: false, layoutChosen: false, controls: null };
 let saved = { ...defaults };
 let storageAvailable = true;
 try {
@@ -41,8 +41,10 @@ try {
 
 try {
   const cookie = document.cookie.split('; ').find(value => value.startsWith('common-ground-layout='))?.split('=')[1];
-  if (cookie === 'focus' || cookie === 'classic') {
-    saved.focus = cookie === 'focus';
+  if (cookie === 'focus' || cookie === 'classic' || cookie === 'immersive') {
+    saved.focus = cookie !== 'classic';
+    if (cookie === 'immersive') saved.header = saved.footer = false;
+    else if (!saved.layoutChosen) saved.header = saved.footer = true;
     saved.layoutChosen = true;
   }
 } catch (error) {
@@ -64,7 +66,7 @@ function rememberLayout() {
   saved.layoutChosen = true;
   save();
   try {
-    const value = saved.focus ? 'focus' : 'classic';
+    const value = saved.focus && !saved.header && !saved.footer ? 'immersive' : saved.focus ? 'focus' : 'classic';
     const path = new URL('.', window.location.href).pathname;
     document.cookie = `common-ground-layout=${value}; Max-Age=31536000; Path=${path}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
     if (!document.cookie.split('; ').includes(`common-ground-layout=${value}`)) {
@@ -113,6 +115,19 @@ dock.before(dockHome);
 const wideScreen = window.matchMedia('(min-width: 701px)');
 const isDialogOpen = () => document.querySelector('dialog[open]') !== null;
 
+function viewMode() {
+  if (saved.focus && !saved.header && !saved.footer) return 'immersive';
+  if (saved.header && saved.footer) return saved.focus ? 'focus' : 'classic';
+  return 'custom';
+}
+
+function setView(mode) {
+  saved.focus = mode !== 'classic';
+  saved.header = saved.footer = mode !== 'immersive';
+  applyDisplay();
+  rememberLayout();
+}
+
 function applyDisplay() {
   document.body.classList.toggle('focus-mode', saved.focus);
   document.body.classList.toggle('hide-hints', !saved.hints);
@@ -120,6 +135,11 @@ function applyDisplay() {
   document.body.classList.toggle('hide-footer', !saved.footer);
   $('hidden-menu-tools').hidden = saved.header;
   $('focus').setAttribute('aria-pressed', String(saved.focus));
+  $('focus').title = `View: ${viewMode()}. Switch to ${viewMode() === 'immersive' ? 'Focus' : saved.focus ? 'Classic' : 'Focus'}. All views in settings.`;
+  $('setting-view').value = viewMode();
+  document.querySelectorAll('.layout-choices button').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.id === `choose-${viewMode()}`));
+  });
   $('setting-focus').checked = saved.focus;
   $('setting-grid').checked = saved.grid;
   $('setting-hints').checked = saved.hints;
@@ -411,19 +431,18 @@ $('quick-pause').addEventListener('click', () => pause());
 $('restore-menu').addEventListener('click', () => {
   saved.header = true;
   applyDisplay();
-  save();
-  blurButton();
-});
-$('focus').addEventListener('click', () => {
-  saved.focus = !saved.focus;
-  applyDisplay();
   rememberLayout();
   blurButton();
 });
+$('focus').addEventListener('click', () => {
+  setView(viewMode() === 'immersive' ? 'focus' : saved.focus ? 'classic' : 'focus');
+  blurButton();
+});
 let settingsCloseTimer;
+let closingSettings = false;
 function openSettings(origin) {
   clearTimeout(settingsCloseTimer);
-  if (isDialogOpen()) return;
+  if (closingSettings || isDialogOpen()) return;
   if (state === 'playing') pause(true);
   input.reset();
   const active = document.activeElement;
@@ -436,7 +455,9 @@ function openSettings(origin) {
 }
 function closeSettings() {
   clearTimeout(settingsCloseTimer);
+  closingSettings = true;
   $('settings-dialog').close();
+  closingSettings = false;
 }
 function scheduleSettingsClose() {
   clearTimeout(settingsCloseTimer);
@@ -464,9 +485,10 @@ for (const [id, key] of [['setting-focus', 'focus'], ['setting-grid', 'grid'], [
   $(id).addEventListener('change', () => {
     saved[key] = $(id).checked;
     applyDisplay();
-    if (key === 'focus') rememberLayout();
+    if (['focus', 'header', 'footer'].includes(key)) rememberLayout();
     else save();
   });
+  $('setting-view').addEventListener('change', () => setView($('setting-view').value));
 }
 $('setting-speed').addEventListener('change', () => {
   saved.progressiveSpeed = $('setting-speed').checked;
@@ -484,17 +506,32 @@ $('settings-dialog').addEventListener('close', () => {
   input.reset();
   blurButton();
 });
-function chooseLayout(focus) {
-  saved.focus = focus;
-  applyDisplay();
+function finishIntroduction() {
   rememberLayout();
   $('layout-dialog').close();
 }
-$('choose-focus').addEventListener('click', () => chooseLayout(true));
-$('choose-classic').addEventListener('click', () => chooseLayout(false));
-$('skip-layout').addEventListener('click', () => chooseLayout(true));
-$('layout-dialog').addEventListener('cancel', event => { event.preventDefault(); chooseLayout(true); });
+for (const mode of ['immersive', 'focus', 'classic']) {
+  $(`choose-${mode}`).addEventListener('click', () => {
+    setView(mode);
+    $('layout-dialog').close();
+  });
+}
+$('skip-layout').addEventListener('click', finishIntroduction);
+$('intro-done').addEventListener('click', finishIntroduction);
+$('layout-dialog').addEventListener('cancel', event => { event.preventDefault(); finishIntroduction(); });
 $('layout-dialog').addEventListener('close', () => { input.reset(); blurButton(); });
+function openIntroduction() {
+  closeSettings();
+  if ($('help-dialog').open) $('help-dialog').close();
+  if (isDialogOpen()) return;
+  if (state === 'playing') pause();
+  input.reset();
+  applyDisplay();
+  $('layout-dialog').showModal();
+  $('layout-dialog').scrollTop = 0;
+}
+$('settings-intro').addEventListener('click', openIntroduction);
+$('help-intro').addEventListener('click', openIntroduction);
 function openControllers() {
   closeSettings();
   if (state === 'playing') pause();

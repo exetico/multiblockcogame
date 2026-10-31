@@ -81,14 +81,29 @@
     </div>
 
     <dialog id="layout-dialog" aria-labelledby="layout-title">
-      <div class="dialog-heading"><span class="eyebrow">YOUR SCREEN. YOUR COMMON GROUND.</span><button id="skip-layout" class="icon-button" aria-label="Use default Focus layout">×</button></div>
+      <div class="dialog-heading"><span class="eyebrow">A QUICK START FOR YOUR TEAM</span><button id="skip-layout" class="icon-button" aria-label="Close introduction and keep current view" autofocus>×</button></div>
       <h2 id="layout-title">Make yourself<br /><em>at home.</em></h2>
-      <p>Choose the layout that suits your screen. Focus is recommended for more room to play. Both layouts use the same 12 × 12 field.</p>
+      <p>Play together on one device. Fill rows across the whole 12 × 12 board; the two centre columns are shared. Choose your view below, or keep the current one. Every view uses the same rules.</p>
+      <div class="intro-essentials">
+        <section><h3>Pause &amp; bring the menus back</h3><p><kbd>ESC</kbd> or your controller's pause button stops play. <strong>Immersive hides the top menu and footer</strong>, not your score, next pieces or shared park. Floating <strong>☰ menu</strong> and <strong>Ⅱ pause</strong> buttons stay at the top right. Tap ☰ to restore the header, then use the gear to show the footer or change your view. Closing a panel leaves play paused.</p></section>
+        <section><h3>Make the controls fit your hands</h3><p>Left: <kbd data-bind="0:ccw">Q</kbd> / <kbd data-bind="0:cw">E</kbd> rotate, <kbd data-bind="0:drop">SPACE</kbd> drops. Right: <kbd data-bind="1:ccw">,</kbd> / <kbd data-bind="1:cw">.</kbd> rotate, <kbd data-bind="1:drop">↑</kbd> drops, <kbd data-bind="1:park">K</kbd> parks and <kbd data-bind="1:exchange">L</kbd> trades. Remap any key or controller button through <strong>gear → Customize keys &amp; buttons</strong>. Sidebar hints can be hidden separately.</p></section>
+      </div>
       <div class="layout-choices">
-        <button id="choose-focus" autofocus><span class="layout-preview preview-focus" aria-hidden="true"><i></i><i></i><i></i></span><strong>Focus <small>RECOMMENDED</small></strong><span>Larger board, compact sidebars.</span></button>
+        <button id="choose-immersive"><span class="layout-preview preview-immersive" aria-hidden="true"><i></i><i></i><i></i></span><strong>Immersive <small>DEFAULT</small></strong><span>Maximum room. Header and footer hidden; floating menu and pause stay available.</span></button>
+        <button id="choose-focus"><span class="layout-preview preview-focus" aria-hidden="true"><i></i><i></i><i></i></span><strong>Focus</strong><span>Larger board and compact sidebars, with header and footer visible.</span></button>
         <button id="choose-classic"><span class="layout-preview preview-classic" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>Classic</strong><span>Score above, more breathing room.</span></button>
       </div>
-      <p class="help-fineprint">We remember your choice in this browser using a preference cookie and local storage. You can change it anytime with the layout button beside fullscreen. Skip or press Escape to use Focus.</p>
+      <details class="intro-options">
+        <summary>More ways to tune your game</summary>
+        <div class="intro-essentials">
+          <section><h3>Display &amp; sound</h3><p>The gear controls view, grid lines, hints and header/footer visibility. Fullscreen is separate from view mode. The music-note button toggles locally synthesized effects; there is no background music.</p></section>
+          <section><h3>Speed &amp; relays</h3><p>Progressive speed is on: falling gets faster every ten cleared rows, not with time. Turn it off in settings for a steady pace. Relay pieces require a handoff; you can disable relays before a new round. Neither choice changes row-based XP.</p></section>
+          <section><h3>Controllers</h3><p>Connect by USB, or pair in your device's Bluetooth settings, then press a button here. The first detected controller plays right, the second left. Click a sidebar's device label for setup and side switching. The browser cannot pair controllers itself.</p></section>
+          <section><h3>Keep a stage</h3><p>Restore the header with ☰ and use the memory-card icon for three browser-local save slots. Loads stay paused. Restore the footer through settings for New Game, which asks twice before replacing an unfinished round. Clearing site data removes saves.</p></section>
+        </div>
+      </details>
+      <p class="help-fineprint">View and settings are remembered in this browser using local storage and a preference cookie. Escape, × or Continue keeps the current view; new visitors start in Immersive. Reopen this introduction from settings or How to play at any time.</p>
+      <button id="intro-done" class="primary-button">CONTINUE WITH THIS VIEW <span>↗</span></button>
     </dialog>
 
     <dialog id="settings-dialog" aria-labelledby="settings-title">
@@ -96,6 +111,7 @@
       <h2 id="settings-title">Game &amp; display settings</h2>
       <p>The field stays 12 × 12, with two shared columns. Display options preserve your round; progressive speed changes only the falling pace.</p>
       <div class="display-options">
+        <label><span><strong>View mode</strong><small>Three presets; individual switches below can create a custom view.</small></span><select id="setting-view" aria-label="View mode"><option value="immersive">Immersive</option><option value="focus">Focus</option><option value="classic">Classic</option><option value="custom" disabled>Custom</option></select></label>
         <label><span><strong>Focus mode</strong><small>A larger field, side-mounted score and shared space on wide screens.</small></span><input id="setting-focus" type="checkbox" /></label>
         <label><span><strong>Grid lines</strong><small>Show cell guides. The shared columns remain highlighted either way.</small></span><input id="setting-grid" type="checkbox" checked /></label>
         <label><span><strong>Control hints</strong><small>Keyboard or controller hints at the bottom of each desktop sidebar.</small></span><input id="setting-hints" type="checkbox" checked /></label>
@@ -104,6 +120,7 @@
         <label><span><strong>Progressive speed</strong><small>Faster falling every ten cleared rows. Off keeps a steady starting pace. Changes pause play and apply to this round.</small></span><input id="setting-speed" type="checkbox" checked /></label>
       </div>
       <button id="settings-remap" class="text-button remap-link">CUSTOMIZE KEYS &amp; BUTTONS →</button>
+      <button id="settings-intro" class="text-button remap-link">INTRODUCTION &amp; VIEW GUIDE →</button>
       <p class="help-fineprint">Opening settings pauses play. Move away to close, then resume when ready. Focus is independent of fullscreen.</p>
       <button id="settings-done" class="primary-button">DONE <span>↗</span></button>
     </dialog>
@@ -170,6 +187,7 @@
       <section class="gamepad-help"><h3>Controllers welcome.</h3><p>Connect a standard controller and press a button. The first controller plays <strong>right</strong>; the second plays <strong>left</strong>. Keyboards stay active.</p><div class="pad-controls pad-legend"></div></section>
       <p class="help-fineprint">Ghost outlines show the landing position. Escape pauses. Use FOCUS for a larger field and the gear for display settings. Sound is synthesized on your device. Best score and lifetime team XP stay in this browser. A keyboard or controller is required; touch controls are not included.</p>
       <p>Use Pause in the header centre, Escape, or your controller's pause button. New Game pauses first and asks twice before discarding an unfinished round. The memory-card icon opens three save slots. Progressive speed is on by default: every ten cleared rows speeds up falling, not elapsed time. Turn it off in settings for a steady pace; levels, score and XP still advance. Settings can hide the header and footer. With the header hidden, floating menu and pause buttons remain available.</p>
+      <button id="help-intro" class="text-button remap-link">INTRODUCTION &amp; VIEW GUIDE →</button>
       <button id="help-done" class="primary-button">GOT IT <span>↗</span></button>
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>
