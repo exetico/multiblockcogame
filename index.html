@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#101921" />
+    <meta name="description" content="Two players. One shared well. An original local co-op falling-block game with keyboard and controller support." />
+    <title>Common Ground — Fall together.</title>
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="Common Ground home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>COMMON<span class="brand-light">GROUND</span></span></a>
+        <span class="edition"><span class="status-dot"></span> LOCAL CO-OP <span class="edition-extra">/ TWO PLAYERS, ONE TEAM</span></span>
+        <nav class="utility" aria-label="Game settings">
+          <button id="sound" class="icon-button" aria-label="Mute sound" title="Toggle sound">♪</button>
+          <button id="fullscreen" class="icon-button" aria-label="Enter fullscreen" title="Fullscreen">⛶</button>
+          <button id="help" class="icon-button" aria-label="How to play" title="How to play">?</button>
+        </nav>
+      </header>
+
+      <main>
+        <section class="scoreboard" aria-label="Team progress">
+          <div class="team-score"><span class="eyebrow">TEAM SCORE</span><strong id="score">000000</strong></div>
+          <div class="progress-stat"><div><span class="eyebrow">TEAM XP</span><span id="xp">0 XP</span></div><div class="xp-track"><div id="xp-fill"></div></div><span class="subtle" id="xp-caption">Every clear counts. Bigger clears count more.</span></div>
+          <div class="small-stat"><span class="eyebrow">LEVEL</span><strong id="level">01</strong></div>
+          <div class="small-stat"><span class="eyebrow">LINES</span><strong id="lines">00</strong></div>
+          <div class="small-stat best-stat"><span class="eyebrow">BEST</span><strong id="best">0</strong></div>
+        </section>
+
+        <section class="play-layout" aria-label="Shared game">
+          <aside class="player-panel player-one" aria-label="Player one">
+            <div class="player-heading"><span class="player-number">01</span><div><h2>LEFT SIDE</h2><span class="device" id="device-0">KEYBOARD</span></div><span class="player-dot"></span></div>
+            <div class="next-header"><span class="eyebrow">UP NEXT</span><span class="subtle">3 PIECES</span></div>
+            <canvas id="next-0" class="next-canvas" width="180" height="210" aria-label="Player one next pieces"></canvas>
+            <div class="relay-note" id="relay-0">Your side. Our score.</div>
+            <div class="controls"><div><span>Move</span><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><div><span>Rotate</span><span><kbd>Q</kbd><kbd>W</kbd></span></div><div><span>Drop</span><kbd class="wide-key">SPACE</kbd></div><div><span>Park</span><kbd>C</kbd></div><div><span>Exchange</span><kbd>V</kbd></div></div>
+            <div class="side-foot"><span class="mini-line"></span> BUILT FOR TWO</div>
+          </aside>
+
+          <div class="arena-column">
+            <div class="arena-labels"><span>← LEFT FIELD</span><span class="shared-label">SHARED × 2</span><span>RIGHT FIELD →</span></div>
+            <div class="board-shell">
+              <canvas id="board" aria-label="Shared falling-block board, 12 columns and 12 rows" role="img"></canvas>
+              <div id="announcement" class="announcement" aria-live="polite"></div>
+              <div class="board-overlay" id="overlay">
+                <span class="overlay-tag" id="overlay-tag">A LITTLE COORDINATION. A LOT OF POSSIBILITIES.</span>
+                <div class="overlay-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <h1 id="overlay-title">Find your<br /><em>common ground.</em></h1>
+                <p id="overlay-description">Two sides. Two shared columns.<br />Build together. Clear together.</p>
+                <button class="primary-button" id="play">LET’S PLAY <span>↗</span></button>
+                <button class="text-button" id="overlay-help">FIRST TIME? HERE’S HOW</button>
+                <div id="start-settings"><label class="toggle"><input id="relay-toggle" type="checkbox" checked /><span></span>Relay pieces <small>occasional required handoffs</small></label></div>
+              </div>
+            </div>
+            <div class="arena-bottom"><span><span class="status-dot"></span> <span id="game-status">READY WHEN YOU ARE</span></span><button id="pause" class="text-button" disabled>PAUSE <kbd>ESC</kbd></button></div>
+          </div>
+
+          <aside class="player-panel player-two" aria-label="Player two">
+            <div class="player-heading"><span class="player-number">02</span><div><h2>RIGHT SIDE</h2><span class="device" id="device-1">KEYBOARD</span></div><span class="player-dot"></span></div>
+            <div class="next-header"><span class="eyebrow">UP NEXT</span><span class="subtle">3 PIECES</span></div>
+            <canvas id="next-1" class="next-canvas" width="180" height="210" aria-label="Player two next pieces"></canvas>
+            <div class="relay-note" id="relay-1">Different sides. Same team.</div>
+            <div class="controls"><div><span>Move</span><span><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span></div><div><span>Rotate</span><span><kbd>/</kbd><kbd>↑</kbd></span></div><div><span>Drop</span><kbd class="wide-key">ENTER</kbd></div><div><span>Park</span><kbd>.</kbd></div><div><span>Exchange</span><kbd>,</kbd></div></div>
+            <div class="side-foot"><span class="mini-line"></span> BETTER TOGETHER</div>
+          </aside>
+        </section>
+
+        <section class="shared-dock" aria-label="Shared park slot">
+          <div class="dock-title"><span class="dock-icon" aria-hidden="true">⌑</span><div><h2>THE COMMON SPACE</h2><p>Park a piece. Lend a hand.</p></div></div>
+          <div class="park-slot"><canvas id="hold" width="112" height="64" aria-label="Shared parked piece, empty"></canvas><div><span class="eyebrow">SHARED PARK</span><span id="hold-status">Either player can use it</span></div></div>
+          <div class="exchange-status"><span class="exchange-icon" aria-hidden="true">⇄</span><div><span class="eyebrow">PIECE EXCHANGE</span><span id="exchange-status">Both press exchange to trade</span></div></div>
+        </section>
+      </main>
+      <footer><span>FALL TOGETHER. RISE TOGETHER.</span><span id="controller-status">KEYBOARD + GAMEPADS <span class="footer-dot">·</span> <button id="restart" class="text-button">NEW GAME</button></span></footer>
+    </div>
+
+    <dialog id="help-dialog">
+      <div class="dialog-heading"><span class="eyebrow">THE FIELD GUIDE</span><button id="close-help" class="icon-button" aria-label="Close instructions">×</button></div>
+      <h2>A shared space.<br /><em>A shared win.</em></h2>
+      <p>Fill complete horizontal rows across the <strong>entire 12 × 12 field</strong>. Each player has a seven-column reach; the <strong>two glowing center columns belong to both of you</strong>. Pieces cannot pass through each other. If either side tops out, the round ends for the team.</p>
+      <div class="help-grid"><section><h3>01 / Park it</h3><p>There’s one shared park slot. Press <kbd>C</kbd> / <kbd>.</kbd> to store your piece or take the parked one. Once per active piece, until you lock it.</p></section><section><h3>02 / Pass it</h3><p>Press <kbd>V</kbd> / <kbd>,</kbd> to request a trade; your partner presses theirs to confirm. Both pieces respawn on their new side. Press again to cancel.</p></section><section><h3>03 / Relay pieces</h3><p>Every tenth piece per player is marked <strong>⇄</strong>. It must change hands before it can lock. Trade it, or park it for your partner. Optional before a new game.</p></section><section><h3>04 / Make it count</h3><p>Clear 1 / 2 / 3 / 4 rows at once for <strong>100 / 300 / 600 / 1,000 XP</strong>. Score also rewards spins, combos, back-to-back big clears, and drops. Every ten rows raises the level.</p></section></div>
+      <section class="gamepad-help"><h3>Controllers welcome.</h3><p>Connect a standard controller and press a button. The first controller plays <strong>right</strong>; the second plays <strong>left</strong>. Keyboards stay active.</p><div class="pad-controls"><span><b>D-pad / stick</b> Move / soft drop</span><span><b>A / Cross</b> Rotate clockwise</span><span><b>B / Circle</b> Rotate counterclockwise</span><span><b>X / Square</b> Hard drop</span><span><b>Y / Triangle</b> Park</span><span><b>LB / RB</b> Exchange</span><span><b>Start / Options</b> Pause / resume</span></div></section>
+      <p class="help-fineprint">Ghost outlines show the landing position. Escape pauses. Sound is synthesized on your device. Best score and lifetime team XP stay in this browser. A keyboard or controller is required; touch controls are not included.</p>
+      <button id="help-done" class="primary-button">GOT IT <span>↗</span></button>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
