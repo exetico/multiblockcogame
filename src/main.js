@@ -12,7 +12,7 @@ function toast(message) {
   toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4200);
 }
 
-const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, focus: false, grid: true, hints: true };
+const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, focus: true, grid: true, hints: true, layoutChosen: false };
 let saved = { ...defaults };
 let storageAvailable = true;
 try {
@@ -24,14 +24,26 @@ try {
       lifetimeXP: Number.isSafeInteger(parsed.lifetimeXP) && parsed.lifetimeXP >= 0 ? parsed.lifetimeXP : 0,
       sound: typeof parsed.sound === 'boolean' ? parsed.sound : true,
       relays: typeof parsed.relays === 'boolean' ? parsed.relays : true,
-      focus: typeof parsed.focus === 'boolean' ? parsed.focus : false,
+      focus: typeof parsed.focus === 'boolean' ? parsed.focus : true,
       grid: typeof parsed.grid === 'boolean' ? parsed.grid : true,
       hints: typeof parsed.hints === 'boolean' ? parsed.hints : true,
+      layoutChosen: parsed.layoutChosen === true,
     };
   }
 } catch (error) {
   console.warn('Could not load Common Ground progress.', error);
   toast('Browser storage is unavailable or invalid. Progress starts fresh for this session.');
+}
+
+try {
+  const cookie = document.cookie.split('; ').find(value => value.startsWith('common-ground-layout='))?.split('=')[1];
+  if (cookie === 'focus' || cookie === 'classic') {
+    saved.focus = cookie === 'focus';
+    saved.layoutChosen = true;
+  }
+} catch (error) {
+  console.warn('Could not read layout preference cookie.', error);
+  toast('Preference cookies are unavailable. We will try local storage instead.');
 }
 
 function save() {
@@ -41,6 +53,22 @@ function save() {
     storageAvailable = false;
     console.warn('Could not save Common Ground progress.', error);
     toast('Browser storage is unavailable. Progress will only last for this session.');
+  }
+}
+
+function rememberLayout() {
+  saved.layoutChosen = true;
+  save();
+  try {
+    const value = saved.focus ? 'focus' : 'classic';
+    const path = new URL('.', window.location.href).pathname;
+    document.cookie = `common-ground-layout=${value}; Max-Age=31536000; Path=${path}; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+    if (!document.cookie.split('; ').includes(`common-ground-layout=${value}`)) {
+      throw new Error('The browser did not retain the preference cookie.');
+    }
+  } catch (error) {
+    console.warn('Could not save layout preference cookie.', error);
+    toast('Preference cookies are unavailable. Your choice uses local storage where available.');
   }
 }
 
@@ -79,7 +107,7 @@ const dockHome = document.createComment('Shared space home');
 scoreboard.before(scoreHome);
 dock.before(dockHome);
 const wideScreen = window.matchMedia('(min-width: 701px)');
-const isDialogOpen = () => $('help-dialog').open || $('settings-dialog').open;
+const isDialogOpen = () => $('help-dialog').open || $('settings-dialog').open || $('layout-dialog').open;
 
 function applyDisplay() {
   document.body.classList.toggle('focus-mode', saved.focus);
@@ -146,14 +174,14 @@ function start() {
   updateHUD();
 }
 
-function pause() {
+function pause(keepFocus = false) {
   if (state !== 'playing' && state !== 'paused') return;
   state = state === 'playing' ? 'paused' : 'playing';
   persistProgress();
   audio.unlock();
   audio.play('pause');
   input.reset();
-  blurButton();
+  if (!keepFocus) blurButton();
   lastTime = performance.now();
   updateOverlay();
 }
@@ -273,29 +301,81 @@ function frame(now) {
 }
 
 $('play').addEventListener('click', start);
-$('pause').addEventListener('click', pause);
+$('pause').addEventListener('click', () => pause());
 $('focus').addEventListener('click', () => {
   saved.focus = !saved.focus;
   applyDisplay();
-  save();
+  rememberLayout();
   blurButton();
 });
-$('settings').addEventListener('click', () => {
-  if (state === 'playing') pause();
+let settingsCloseTimer;
+function openSettings(origin) {
+  clearTimeout(settingsCloseTimer);
+  if ($('settings-dialog').open || $('help-dialog').open || $('layout-dialog').open) return;
+  if (state === 'playing') pause(true);
   input.reset();
-  $('settings-dialog').showModal();
+  const active = document.activeElement;
+  $('settings-dialog').show();
+  if (origin === 'hover') {
+    blurButton();
+    if (active instanceof HTMLElement && active !== document.body) active.focus({ preventScroll: true });
+  }
+  $('settings').setAttribute('aria-expanded', 'true');
+}
+function closeSettings() {
+  clearTimeout(settingsCloseTimer);
+  $('settings-dialog').close();
+}
+function scheduleSettingsClose() {
+  clearTimeout(settingsCloseTimer);
+  settingsCloseTimer = setTimeout(() => {
+    if (!$('settings-dialog').contains(document.activeElement) && document.activeElement !== $('settings')) closeSettings();
+  }, 250);
+}
+for (const id of ['settings', 'settings-dialog']) {
+  $(id).addEventListener('pointerenter', event => { if (event.pointerType !== 'touch') openSettings('hover'); });
+  $(id).addEventListener('pointerleave', scheduleSettingsClose);
+  $(id).addEventListener('focusin', openSettings);
+  $(id).addEventListener('focusout', scheduleSettingsClose);
+}
+$('settings').addEventListener('click', openSettings);
+document.addEventListener('pointerdown', event => {
+  if ($('settings-dialog').open && !$('settings-dialog').contains(event.target) && !$('settings').contains(event.target)) closeSettings();
+});
+document.addEventListener('keydown', event => {
+  if (event.code === 'Escape' && $('settings-dialog').open) {
+    event.preventDefault();
+    closeSettings();
+  }
 });
 for (const [id, key] of [['setting-focus', 'focus'], ['setting-grid', 'grid'], ['setting-hints', 'hints']]) {
   $(id).addEventListener('change', () => {
     saved[key] = $(id).checked;
     applyDisplay();
-    save();
+    if (key === 'focus') rememberLayout();
+    else save();
   });
 }
 for (const id of ['close-settings', 'settings-done']) {
-  $(id).addEventListener('click', () => $('settings-dialog').close());
+  $(id).addEventListener('click', closeSettings);
 }
-$('settings-dialog').addEventListener('close', () => { input.reset(); blurButton(); });
+$('settings-dialog').addEventListener('close', () => {
+  clearTimeout(settingsCloseTimer);
+  $('settings').setAttribute('aria-expanded', 'false');
+  input.reset();
+  blurButton();
+});
+function chooseLayout(focus) {
+  saved.focus = focus;
+  applyDisplay();
+  rememberLayout();
+  $('layout-dialog').close();
+}
+$('choose-focus').addEventListener('click', () => chooseLayout(true));
+$('choose-classic').addEventListener('click', () => chooseLayout(false));
+$('skip-layout').addEventListener('click', () => chooseLayout(true));
+$('layout-dialog').addEventListener('cancel', event => { event.preventDefault(); chooseLayout(true); });
+$('layout-dialog').addEventListener('close', () => { input.reset(); blurButton(); });
 $('restart').addEventListener('click', () => {
   if (state === 'playing') pause();
   if ((state === 'paused' && (game.score || game.players.some(p => p.queue.length && p.canHold === false))) || game.lines) {
@@ -327,6 +407,7 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 function openHelp() {
+  closeSettings();
   if (state === 'playing') pause();
   input.reset();
   $('help-dialog').showModal();
@@ -347,4 +428,5 @@ window.addEventListener('blur', () => { if (state === 'playing') pause(); });
 window.addEventListener('pagehide', persistProgress);
 updateOverlay();
 updateHUD();
+if (!saved.layoutChosen) $('layout-dialog').showModal();
 requestAnimationFrame(frame);

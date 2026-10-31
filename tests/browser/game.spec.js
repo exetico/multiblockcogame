@@ -1,7 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-async function begin(page) {
+async function visit(page) {
   await page.goto('/');
+  if (await page.locator('#layout-dialog').isVisible()) {
+    await page.getByRole('button', { name: 'Classic', exact: false }).click();
+  }
+}
+
+async function begin(page) {
+  await visit(page);
   await page.getByRole('button', { name: 'LET’S PLAY' }).click();
   await expect(page.locator('#overlay')).toBeHidden();
 }
@@ -46,7 +53,7 @@ test('help pauses play and has precise shared rules and keyboard/controller mapp
 });
 
 test('sound, relay preference, best score and XP settings persist across reloads', async ({ page }) => {
-  await page.goto('/');
+  await visit(page);
   await page.getByRole('button', { name: 'Mute sound' }).click();
   await page.locator('#relay-toggle').uncheck();
   await page.getByRole('button', { name: 'LET’S PLAY' }).click();
@@ -75,7 +82,7 @@ test('simultaneous movement works for both keyboard players', async ({ page }) =
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 1280, height: 720 }, { width: 390, height: 844 }]) {
   test(`responsive square field and usable start button at ${viewport.width} × ${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.goto('/');
+    await visit(page);
     await expect(page.getByRole('button', { name: 'LET’S PLAY' })).toBeInViewport();
     const rect = await page.locator('#board').boundingBox();
     expect(Math.abs(rect.width - rect.height)).toBeLessThan(2);
@@ -115,7 +122,7 @@ test('standard gamepad plays the right side, supports pause, and disconnect paus
 for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 1024, height: 768 }, { width: 900, height: 600 }]) {
   test(`focus maximizes the square field without scrolling at ${viewport.width} × ${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.goto('/');
+    await visit(page);
     const original = await page.locator('#board').boundingBox();
     await page.getByRole('button', { name: 'Toggle focus mode' }).click();
     await expect(page.locator('body')).toHaveClass(/focus-mode/);
@@ -143,8 +150,75 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await page.keyboard.press('Period');
     await expect(page.locator('#hold')).not.toHaveAttribute('aria-label', 'Shared parked piece, empty');
   });
+
 }
 
+  test('first visit defaults to Focus; choice and cookie survive reload and Classic remains available', async ({ page, context }) => {
+    await page.goto('/');
+    await expect(page.locator('#layout-dialog')).toBeVisible();
+    await expect(page.locator('body')).toHaveClass(/focus-mode/);
+    await expect(page.locator('#focus')).toHaveClass(/icon-button/);
+    await expect(page.locator('#focus svg')).toBeVisible();
+    await page.getByRole('button', { name: 'Focus RECOMMENDED' }).click();
+    await expect(page.locator('#layout-dialog')).toBeHidden();
+    expect((await context.cookies()).find(cookie => cookie.name === 'common-ground-layout')?.value).toBe('focus');
+    await page.reload();
+    await expect(page.locator('#layout-dialog')).toBeHidden();
+    await expect(page.locator('#focus')).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: 'Toggle focus mode' }).click();
+    expect((await context.cookies()).find(cookie => cookie.name === 'common-ground-layout')?.value).toBe('classic');
+    await page.reload();
+    await expect(page.locator('#focus')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#layout-dialog')).toBeHidden();
+  });
+
+  test('first-time Classic choice persists; skipping uses Focus', async ({ page, context }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Classic', exact: false }).click();
+    await page.reload();
+    await expect(page.locator('#layout-dialog')).toBeHidden();
+    await expect(page.locator('#focus')).toHaveAttribute('aria-pressed', 'false');
+    await context.clearCookies();
+    await page.evaluate(() => localStorage.removeItem('common-ground-v1'));
+    await page.reload();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#layout-dialog')).toBeHidden();
+    await page.reload();
+    await expect(page.locator('#focus')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#layout-dialog')).toBeHidden();
+  });
+
+  test('settings open on hover, stay reachable, close on leaving and pause safely', async ({ page }) => {
+    await begin(page);
+    await page.getByRole('button', { name: 'Display settings' }).hover();
+    await expect(page.locator('#settings-dialog')).toBeVisible();
+    await expect(page.locator('#settings')).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#overlay-title')).toContainText('pause');
+    await page.locator('#settings-title').hover();
+    await page.waitForTimeout(350);
+    await expect(page.locator('#settings-dialog')).toBeVisible();
+    await page.locator('#overlay-title').hover();
+    await expect(page.locator('#settings-dialog')).toBeHidden();
+    await expect(page.locator('#overlay-title')).toContainText('pause');
+    await page.locator('#settings').focus();
+    await expect(page.locator('#settings-dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#settings-dialog')).toBeHidden();
+  });
+
+  test('touch users can select a layout and tap settings', async ({ browser }) => {
+    const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+    await page.goto('http://127.0.0.1:4173/');
+    await page.getByRole('button', { name: 'Focus RECOMMENDED' }).tap();
+    await page.locator('#settings').tap();
+    await expect(page.locator('#settings-dialog')).toBeVisible();
+    await page.locator('#setting-grid').uncheck();
+    await page.locator('#settings-done').tap();
+    await expect(page.locator('#settings-dialog')).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await context.close();
+  });
 test('focus preserves a running round, adapts across breakpoints, and persists', async ({ page }) => {
   await begin(page);
   await page.keyboard.press('Space');
