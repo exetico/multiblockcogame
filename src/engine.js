@@ -53,7 +53,7 @@ export class Game {
     this.board = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(null));
     this.players = [0, 1].map(id => ({
       id, piece: null, queue: [], bag: [], count: 0, canHold: true,
-      gravity: 0, lockTime: 0, resets: 0,
+      gravity: 0, lockTime: 0, resets: 0, serial: 0,
     }));
     this.hold = null;
     this.exchangeRequest = null;
@@ -92,7 +92,7 @@ export class Game {
     const item = value => value && TYPES.includes(value.type) &&
       (value.relayOwner === null || integer(value.relayOwner, 0, 1));
     const piece = value => item(value) && integer(value.x, -4, WIDTH) &&
-      integer(value.y, -2, HEIGHT - 1) && integer(value.rotation, 0, 3) && boolean(value.lastRotate);
+      integer(value.y, -3, HEIGHT - 1) && integer(value.rotation, 0, 3) && boolean(value.lastRotate);
     if (!data || data.version !== 1 || !boolean(data.relays) || !boolean(data.progressiveSpeed) ||
       !integer(data.score, 0) || !integer(data.xp, 0) || !integer(data.lines, 0) ||
       data.level !== 1 + Math.floor(data.lines / 10) || !integer(data.combo, -1, data.lines) ||
@@ -108,9 +108,10 @@ export class Game {
         new Set(player.bag).size === player.bag.length && integer(player.count, 6) && boolean(player.canHold) &&
         Number.isFinite(player.gravity) && player.gravity >= 0 && player.gravity <= 1000 &&
         Number.isFinite(player.lockTime) && player.lockTime >= 0 && player.lockTime < 500 &&
-        integer(player.resets, 0, 15))) fail();
+        integer(player.resets, 0, 15) && (player.serial === undefined || integer(player.serial, 0)))) fail();
     const copy = JSON.parse(JSON.stringify(data));
     const game = Object.create(Game.prototype);
+    copy.players.forEach(player => { player.serial ??= 0; });
     Object.assign(game, {
       random, board: copy.board, players: copy.players, hold: copy.hold,
       exchangeRequest: copy.exchangeRequest, score: copy.score, xp: copy.xp,
@@ -142,12 +143,28 @@ export class Game {
   }
 
   spawn(player, item) {
-    player.piece = this.atSpawn(item ?? player.queue.shift(), player.id);
+    player.piece = this.spawnCandidate(item ?? player.queue.shift(), player.id);
+    if (!this.fits(player.piece, player.id) && this.fits(player.piece, player.id, false)) {
+      // A partner in the shared hidden columns must not cause spawn top-out.
+      for (const dx of [1, -1, 2, -2]) {
+        const candidate = { ...player.piece, x: player.piece.x + dx };
+        if (this.fits(candidate, player.id)) { player.piece = candidate; break; }
+      }
+    }
     this.fillQueue(player);
+    player.serial = (player.serial ?? 0) + 1;
     player.gravity = 0;
     player.lockTime = 0;
     player.resets = 0;
     if (!this.fits(player.piece, player.id)) this.end(player.id);
+  }
+
+  spawnCandidate(item, id, includePartner = true) {
+    const candidate = this.atSpawn(item, id);
+    // A crowded top row is recoverable: enter in the hidden rows and give
+    // the normal lock window to move, rotate, park or trade out of trouble.
+    if (!this.fits(candidate, id, includePartner)) candidate.y = item.type === 'I' ? -3 : -2;
+    return candidate;
   }
 
   fits(piece, id, includePartner = true) {
@@ -174,6 +191,7 @@ export class Game {
     player.piece = candidate;
     if (soft && dy > 0) {
       this.score += dy;
+      player.gravity = 0;
       this.emit('soft-drop', { id });
     }
     if (dx && wasGrounded && player.resets < 15) {
@@ -188,7 +206,14 @@ export class Game {
     if (this.over) return false;
     const player = this.players[id];
     const piece = player.piece;
-    if (piece.type === 'O') return false;
+    if (piece.type === 'O') {
+      if (this.grounded(id) && player.resets < 15) {
+        player.lockTime = 0;
+        player.resets++;
+      }
+      this.emit('rotate', { id });
+      return true;
+    }
     const rotation = (piece.rotation + direction + 4) % 4;
     const tests = (piece.type === 'I' ? I_KICKS : KICKS)[`${piece.rotation}>${rotation}`];
     const wasGrounded = this.grounded(id);
@@ -220,9 +245,7 @@ export class Game {
     this.emit('drop', { id });
     this.score += (landing.y - player.piece.y) * 2;
     player.piece = { ...landing, lastRotate: landing.lastRotate && landing.y === player.piece.y };
-    if (landing.relayOwner !== null) {
-      this.emit('notice', { id, message: 'Relay piece — pass it to your partner first.' });
-    } else if (this.grounded(id, false)) {
+    if (this.grounded(id, false)) {
       this.lock(id);
     } else {
       this.emit('notice', { id, message: 'Your partner is underneath. Give them room.' });
@@ -238,7 +261,7 @@ export class Game {
     }
     const current = this.item(player.piece);
     const incoming = this.hold ? this.received(this.hold, id) : player.queue[0];
-    if (!this.fits(this.atSpawn(incoming, id), id)) {
+    if (!this.fits(this.spawnCandidate(incoming, id), id)) {
       this.emit('notice', { id, message: 'No room to take a piece. Clear the spawn area.' });
       return false;
     }
@@ -267,12 +290,15 @@ export class Game {
       return false;
     }
     const incoming = this.players.map((_, i) => this.received(this.item(this.players[1 - i].piece), i));
-    if (!incoming.every((item, i) => this.fits(this.atSpawn(item, i), i, false))) {
+    const candidates = incoming.map((item, i) => this.spawnCandidate(item, i, false));
+    if (!candidates.every((candidate, i) => this.fits(candidate, i, false)) ||
+      cells(candidates[0]).some(([x, y]) => cells(candidates[1]).some(([ox, oy]) => x === ox && y === oy))) {
       this.emit('notice', { message: 'Exchange blocked — clear both spawn areas first.' });
       return false;
     }
     this.players.forEach(p => {
-      p.piece = this.atSpawn(incoming[p.id], p.id);
+      p.piece = candidates[p.id];
+      p.serial = (p.serial ?? 0) + 1;
       p.gravity = 0;
       p.lockTime = 0;
       p.resets = 0;
@@ -296,8 +322,12 @@ export class Game {
     if (this.over) return;
     const player = this.players[id];
     const piece = player.piece;
-    if (piece.relayOwner !== null || !this.grounded(id, false)) return;
+    if (!this.grounded(id, false)) return;
     if (cells(piece).some(([, y]) => y < 0)) { this.end(id); return; }
+    if (piece.relayOwner !== null) {
+      this.emit('notice', { id, message: 'Relay missed — hand off before the piece locks next time.' });
+      piece.relayOwner = null;
+    }
     const spin = this.isSpin(piece, id);
     for (const [x, y] of cells(piece)) this.board[y][x] = { type: piece.type, owner: id };
     player.piece = null;
@@ -334,24 +364,30 @@ export class Game {
     if (!this.over) this.spawn(player);
   }
 
-  tick(dt) {
+  tick(dt, skipPlayers = []) {
     if (this.over) return;
     dt = Math.min(dt, 100);
     for (const player of this.players) {
       if (this.over) break;
       const id = player.id;
-      player.gravity += dt;
-      while (player.gravity >= this.gravityInterval) {
-        player.gravity -= this.gravityInterval;
-        this.move(id, 0, 1);
-      }
-      if (this.grounded(id, false)) {
-        if (player.piece.relayOwner === null) {
-          player.lockTime += dt;
-          if (player.lockTime >= 500) this.lock(id);
+      if (skipPlayers.includes(id)) continue;
+      let remaining = dt;
+      while (remaining > 0 && !this.over) {
+        const grounded = this.grounded(id, false);
+        const step = Math.min(remaining, Math.max(0, this.gravityInterval - player.gravity), grounded ? 500 - player.lockTime : Infinity);
+        player.gravity += step;
+        if (grounded) player.lockTime += step;
+        else player.lockTime = 0;
+        remaining -= step;
+        if (grounded && player.lockTime >= 500) {
+          this.lock(id);
+          // The elapsed frame belongs to the old piece, not its successor.
+          break;
         }
-      } else {
-        player.lockTime = 0;
+        if (player.gravity >= this.gravityInterval) {
+          player.gravity = 0;
+          this.move(id, 0, 1);
+        }
       }
     }
   }
@@ -359,6 +395,7 @@ export class Game {
   end(id) {
     if (this.over) return;
     this.over = true;
+    this.exchangeRequest = null;
     this.emit('over', { id });
   }
 }

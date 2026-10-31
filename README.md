@@ -14,7 +14,9 @@ the layout scales to small screens, but touch controls are not included.
 Each player can move within seven columns. The **middle two columns overlap**:
 both players can place pieces there, but active pieces cannot pass through each
 other. Complete a row across **all 12 columns** to clear it. If either player
-tops out, the round ends for the team.
+locks a piece with cells above the board, the round ends for the team.
+Crowded top rows do not end the round on appearance: a new piece can enter
+in the hidden rows and use the normal lock window to move or rotate to safety.
 
 - **Shared park:** store your current piece or swap with the parked one. Either
   player can take it. You can park once per active piece until you lock it.
@@ -22,14 +24,27 @@ tops out, the round ends for the team.
   confirm. Both pieces respawn upright on their new sides. Press your own
   exchange button again to cancel. Blocked spawn areas prevent a trade without
   consuming either piece.
-- **Relays:** every tenth piece per player is marked `⇄`. It must change hands
-  before it can lock. Exchange it, or park it for your partner. Taking your own
+- **Relays:** every tenth piece per player is marked `⇄`. Hand it off before
+  it locks by exchanging it or parking it for your partner. If the deadline
+  expires without a handoff, it locks normally, reports **Relay missed**, and
+  the next piece arrives; it never freezes waiting for the partner. Hard drop
+  locks immediately and counts as a miss if it was not handed off. Taking your own
   parked relay does not count as a handoff. Disable relays on the start or
   game-over screen for a simpler game.
 - **Fundamentals:** independent seven-piece bags, wall-kicked rotation, ghost
   landings, three-piece previews, soft/hard drops, 500 ms lock delay with up to
   15 movement/rotation resets, rising gravity, combos, back-to-back clears, and
   three-corner T-spin recognition.
+
+Gravity starts fresh for each new piece. The lock timer counts only time
+actually resting on settled blocks/floor, not time spent falling or resting
+on an airborne partner. Soft drop does not add an extra simultaneous gravity
+step. Successful movement/rotation resets the lock delay up to fifteen times
+(including square-piece rotation); the limit prevents indefinite stalling.
+Rapid keyboard rotation taps and held-key rotation repeats are accepted.
+Quick movement and soft-drop taps are queued individually, in input order.
+Repeated trade/drop keydown events while holding a key do not repeat those
+actions. Inputs queued for an old piece cannot immediately drop its successor.
 
 This is not an exact reproduction of a commercial game. The 12 × 12 geometry
 and overlap follow the requested Shared Mode; branding, visuals, sounds,

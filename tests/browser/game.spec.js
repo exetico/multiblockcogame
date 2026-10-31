@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { Game } from '../../src/engine.js';
 
 async function visit(page) {
   await page.goto('/');
@@ -477,8 +478,10 @@ test('a zero-score round still requires confirmation and the memory card works o
 test('three memory slots persist exact stages, confirm destructive actions and restore paused', async ({ page }) => {
   await begin(page);
   await page.keyboard.press('Space');
+  await expect(page.locator('#score')).not.toHaveText('000000');
   await page.keyboard.press('KeyK');
   await page.keyboard.press('KeyV');
+  await expect(page.locator('#exchange-status')).toContainText('Player 1 asks');
   await page.getByRole('button', { name: 'Save stages', exact: true }).click();
   await expect(page.locator('.stage-card')).toHaveCount(3);
   await expect(page.locator('#overlay-title')).toContainText('pause');
@@ -489,6 +492,7 @@ test('three memory slots persist exact stages, confirm destructive actions and r
   await page.locator('#stages-done').click();
   await page.locator('#pause').click();
   await page.keyboard.press('Enter');
+  await expect(page.locator('#score')).not.toHaveText(String(original.score).padStart(6, '0'));
   await page.getByRole('button', { name: 'Save stages', exact: true }).click();
   await stageButton(page, 'save', 3).click();
   const updated = (await readCard(page)).slots[2].game;
@@ -785,4 +789,78 @@ test('new mobile visitors can keep Immersive, restore menus and revisit the intr
   await expect(page.locator('.topbar')).toBeVisible();
   await expect(page.locator('footer')).toBeVisible();
   await context.close();
+});
+
+async function loadTestStage(page, stage) {
+  await visit(page);
+  await page.evaluate(snapshot => {
+    localStorage.setItem('common-ground-stages-v1', JSON.stringify({
+      version: 1, slots: [{ savedAt: Date.now(), game: snapshot }, null, null],
+    }));
+  }, stage.snapshot());
+  await page.reload();
+  await page.locator('#stages').click();
+  await stageButton(page, 'load', 1).click();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+}
+
+test('saved untraded relays settle with a miss and both players receive new pieces', async ({ page }) => {
+  const game = new Game({ random: () => 0.43 });
+  game.players[0].piece = { type: 'T', x: 1, y: 10, rotation: 0, relayOwner: 0, lastRotate: false };
+  game.players[1].piece = { type: 'O', x: 8, y: 10, rotation: 0, relayOwner: 1, lastRotate: false };
+  await loadTestStage(page, game);
+  const preview = await page.locator('#next-0').getAttribute('aria-label');
+  await page.locator('#pause').click();
+  await expect(page.locator('#toast')).toContainText('Relay missed');
+  await expect(page.locator('#next-0')).not.toHaveAttribute('aria-label', preview);
+  await expect(page.locator('#overlay')).toBeHidden();
+  await page.locator('#stages').click();
+  await stageButton(page, 'save', 2).click();
+  const snapshot = (await readCard(page)).slots[1].game;
+  expect(snapshot.board.flat().filter(Boolean)).toHaveLength(8);
+  expect(snapshot.players.every(player => player.piece.relayOwner === null)).toBe(true);
+});
+
+test('repeated L requests and rapid rotation input do not cause a premature game over', async ({ page }) => {
+  await begin(page);
+  await page.evaluate(async () => {
+    const { Game } = await import('/src/engine.js');
+    const rotate = Game.prototype.rotate;
+    window.rotationInputs = [];
+    Game.prototype.rotate = function (id, direction) {
+      window.rotationInputs.push([id, direction]);
+      return rotate.call(this, id, direction);
+    };
+  });
+  for (let n = 0; n < 30; n++) await page.keyboard.press('KeyL');
+  await page.keyboard.down('KeyE');
+  await page.keyboard.down('KeyE');
+  await page.keyboard.down('KeyE');
+  await page.keyboard.up('KeyE');
+  for (let n = 0; n < 5; n++) await page.keyboard.press('Comma');
+  await expect.poll(() => page.evaluate(() => window.rotationInputs.length)).toBe(8);
+  await expect(page.locator('#overlay')).toBeHidden();
+  await page.locator('#pause').click();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await page.locator('#stages').click();
+  await stageButton(page, 'save', 1).click();
+  expect((await readCard(page)).slots[0].game.board.flat().filter(Boolean)).toHaveLength(0);
+});
+
+test('crowded spawn can be rescued by moving before lock instead of ending on appearance', async ({ page }) => {
+  const game = new Game({ random: () => 0.43, relays: false });
+  for (let x = 2; x <= 4; x++) game.board[0][x] = { type: 'J', owner: 0 };
+  game.spawn(game.players[0], { type: 'T', relayOwner: null });
+  expect(game.over).toBe(false);
+  expect(game.players[0].piece.y).toBe(-2);
+  await loadTestStage(page, game);
+  await page.locator('#pause').click();
+  await page.keyboard.press('KeyA');
+  await page.keyboard.press('KeyA');
+  await page.keyboard.press('KeyQ');
+  await page.waitForTimeout(650);
+  await expect(page.locator('#overlay')).toBeHidden();
+  await page.locator('#stages').click();
+  await stageButton(page, 'save', 2).click();
+  expect((await readCard(page)).slots[1].game.players[0].piece.x).toBe(0);
 });

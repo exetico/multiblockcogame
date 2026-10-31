@@ -278,13 +278,13 @@ test('shared park can be taken by either player and is once per active piece', (
 
 test('park fails atomically if the incoming piece has no spawn space', () => {
   const game = make();
-  game.players[0].piece = piece('O', 0, 9);
-  game.hold = { type: 'T', relayOwner: null };
-  game.board[0][3] = solid();
-  const before = structuredClone(game.players[0].piece);
-  assert.equal(game.park(0), false);
-  assert.deepEqual(game.players[0].piece, before);
-  assert.equal(game.hold.type, 'T');
+  game.players[1].piece = piece('O', 8, 9);
+  game.players[0].piece = piece('I', 4, -2, { rotation: 1 });
+  game.hold = { type: 'I', relayOwner: null };
+  const before = structuredClone(game.players[1].piece);
+  assert.equal(game.park(1), false);
+  assert.deepEqual(game.players[1].piece, before);
+  assert.equal(game.hold.type, 'I');
   assert.equal(game.over, false);
 });
 
@@ -303,30 +303,54 @@ test('exchange needs consent from both players, resets positions and preserves h
   assert.equal(game.exchangeRequest, null);
 });
 
-test('blocked exchange leaves both active pieces untouched', () => {
+test('exchange at a crowded top uses hidden spawn rows without ending the round', () => {
   const game = make();
   game.players[0].piece = piece('T', 1, 7);
   game.players[1].piece = piece('L', 7, 7);
   game.board[0][3] = solid();
-  const before = game.players.map(p => structuredClone(p.piece));
   game.exchange(0);
-  assert.equal(game.exchange(1), false);
-  assert.deepEqual(game.players.map(p => p.piece), before);
+  assert.equal(game.exchange(1), true);
+  assert.equal(game.players[0].piece.y, -2);
+  assert.equal(game.over, false);
+  assert.ok(game.players.every(p => game.fits(p.piece, p.id)));
 });
 
-test('relay pieces cannot lock until handed to the other player', () => {
+test('relay handoff succeeds before locking, without a missed-relay notice', () => {
   const game = make();
   game.players[0].piece = piece('T', 1, 0, { relayOwner: 0 });
-  game.hardDrop(0);
-  assert.equal(game.board.flat().filter(Boolean).length, 0);
-  for (let n = 0; n < 10; n++) game.tick(100);
-  assert.equal(game.board.flat().filter(Boolean).length, 0);
   game.exchange(0);
   game.exchange(1);
   assert.equal(game.players[1].piece.type, 'T');
   assert.equal(game.players[1].piece.relayOwner, null);
   game.hardDrop(1);
   assert.equal(game.board.flat().filter(Boolean).length, 4);
+  assert.equal(game.drainEvents().some(event => event.message?.includes('Relay missed')), false);
+});
+
+test('both untraded relays lock at the deadline and spawn successors instead of deadlocking', () => {
+  const game = make();
+  game.players[0].piece = piece('T', 1, 10, { relayOwner: 0 });
+  game.players[1].piece = piece('O', 8, 10, { relayOwner: 1 });
+  game.exchange(0);
+  for (let n = 0; n < 4; n++) game.tick(100);
+  assert.equal(game.board.flat().filter(Boolean).length, 0);
+  game.tick(100);
+  assert.equal(game.board.flat().filter(Boolean).length, 8);
+  assert.equal(game.exchangeRequest, null);
+  assert.equal(game.over, false);
+  assert.ok(game.players.every(p => p.piece.y === -1));
+  const misses = game.drainEvents().filter(event => event.message?.includes('Relay missed'));
+  assert.deepEqual(misses.map(event => event.id), [0, 1]);
+});
+
+test('hard-dropping an untraded relay reports a miss, locks and gives a new piece', () => {
+  const game = make();
+  game.players[0].piece = piece('T', 1, 0, { relayOwner: 0 });
+  game.hardDrop(0);
+  assert.equal(game.board.flat().filter(Boolean).length, 4);
+  assert.equal(game.players[0].piece.y, -1);
+  assert.equal(game.over, false);
+  assert.equal(game.drainEvents().filter(event => event.message?.includes('Relay missed')).length, 1);
 });
 
 test('parking relays only satisfies the handoff if the partner retrieves it', () => {
@@ -391,16 +415,98 @@ test('row collapse never leaves an airborne partner inside a settled cell', () =
   assert.ok(game.fits(game.players[1].piece, 1));
 });
 
-test('spawn obstruction ends the team round and further inputs do not mutate it', () => {
+test('a crowded spawn gives a lock window; only locking above the board ends the round', () => {
   const game = make();
   game.board[0].fill(solid());
   game.spawn(game.players[0], { type: 'T', relayOwner: null });
+  assert.equal(game.over, false);
+  assert.equal(game.players[0].piece.y, -2);
+  assert.ok(game.fits(game.players[0].piece, 0));
+  for (let n = 0; n < 4; n++) game.tick(100);
+  assert.equal(game.over, false);
+  game.tick(100);
   assert.equal(game.over, true);
   const before = JSON.stringify(game.board);
   assert.equal(game.move(1, 1), false);
   game.hardDrop(1);
   game.tick(100);
   assert.equal(JSON.stringify(game.board), before);
+});
+
+test('repeated trade requests on an empty field cannot end the round or mutate pieces', () => {
+  const game = make();
+  game.park(0);
+  const pieces = structuredClone(game.players.map(player => player.piece));
+  for (let n = 0; n < 200; n++) game.exchange(1);
+  assert.equal(game.over, false);
+  assert.deepEqual(game.players.map(player => player.piece), pieces);
+  assert.equal(game.board.flat().filter(Boolean).length, 0);
+  for (let n = 0; n < 50; n++) {
+    game.exchange(0);
+    game.exchange(1);
+    assert.equal(game.over, false);
+    assert.ok(game.players.every(player => game.fits(player.piece, player.id)));
+  }
+});
+
+test('lock timing counts only actual grounded time and new pieces get a full gravity interval', () => {
+  const game = make();
+  game.players[0].piece = piece('O', 0, 9);
+  game.players[0].gravity = 850;
+  game.tick(100);
+  assert.equal(game.players[0].piece.y, 10);
+  assert.equal(game.players[0].lockTime, 50, 'only the last half of the frame was grounded');
+  for (let n = 0; n < 4; n++) game.tick(100);
+  assert.equal(game.board.flat().filter(Boolean).length, 0);
+  game.tick(100);
+  assert.equal(game.board.flat().filter(Boolean).length, 4);
+  assert.equal(game.players[0].gravity, 0);
+  const y = game.players[0].piece.y;
+  for (let n = 0; n < 8; n++) game.tick(100);
+  game.tick(99);
+  assert.equal(game.players[0].piece.y, y);
+  game.tick(1);
+  assert.equal(game.players[0].piece.y, y + 1);
+});
+
+test('soft drop resets gravity and spawning during input does not consume the old frame', () => {
+  const game = make();
+  game.players[0].gravity = 899;
+  const y = game.players[0].piece.y;
+  game.move(0, 0, 1, true);
+  game.tick(10);
+  assert.equal(game.players[0].piece.y, y + 1);
+  game.hardDrop(0);
+  game.tick(100, [0]);
+  assert.equal(game.players[0].gravity, 0);
+  assert.equal(game.players[0].lockTime, 0);
+});
+
+test('a new piece blocked by an airborne partner enters nearby without false game over', () => {
+  const game = make();
+  game.players[0].piece = piece('I', 4, -2, { rotation: 1 });
+  game.spawn(game.players[1], { type: 'I', relayOwner: null });
+  assert.equal(game.over, false);
+  assert.ok(game.fits(game.players[1].piece, 1));
+  assert.equal(game.players[1].piece.y, -3);
+  assert.equal(game.players[1].piece.x, 7);
+  assert.deepEqual(Game.restore(game.snapshot()).snapshot(), game.snapshot());
+});
+
+test('square rotations refresh lock delay and rapid rotations work up to the reset limit', () => {
+  const game = make();
+  game.players[0].piece = piece('O', 0, 10);
+  for (let n = 0; n < 15; n++) {
+    game.tick(100);
+    assert.equal(game.rotate(0), true);
+    assert.equal(game.players[0].lockTime, 0);
+  }
+  assert.equal(game.players[0].resets, 15);
+  game.tick(100);
+  game.rotate(0);
+  assert.equal(game.players[0].lockTime, 100, 'resets remain bounded');
+  for (let n = 0; n < 4; n++) game.tick(100);
+  assert.equal(game.board.flat().filter(Boolean).length, 4);
 });
 
 test('bounded randomized play maintains board dimensions and valid active pieces', () => {

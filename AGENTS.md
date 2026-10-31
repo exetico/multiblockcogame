@@ -50,10 +50,23 @@ The user explicitly specified **12 columns by 12 rows**, with **two shared
 columns**. Left reach is x=0-6, right reach x=5-11, overlap x=5-6 (zero-based).
 Rows clear only across the entire 12-column width.
 
-Active pieces cannot overlap or lock onto an airborne partner. Relays cannot
-lock until handed to the other player. Parking is once per piece until a lock;
+Active pieces cannot overlap or lock onto an airborne partner. Relays have
+the normal lock deadline: missed handoffs emit a visible notice and lock
+normally, rather than freezing. Hard drop locks immediately, with a miss if
+untraded. Parking is once per piece until a lock;
 exchanges do not reset that limit. Park and exchange must be atomic if spawn
 space is blocked. Row collapse must preserve a legal airborne partner.
+Crowded spawns enter in hidden rows (minimum occupied cell y=-2; horizontal
+I may use origin y=-3). Top-out occurs when locking above the visible board,
+not merely because the default spawn intersects a top-row cell. Avoid killing
+the round when an airborne partner occupies shared spawn columns.
+Tick splits gravity/lock boundaries and counts only actual grounded time.
+New-piece serials reset soft-drop repeat and discard stale queued actions.
+The frame's pre-input dt must not age pieces spawned by input that frame.
+Persist serials in saves; accept missing serials from older stages.
+Square rotation accepts input and resets lock time within the fifteen-reset
+limit; keyboard repeat applies only to rotation, not park/exchange/hard drop.
+Queue individual movement/soft-drop taps too; a set would collapse rapid taps.
 
 XP depends exclusively on simultaneous rows cleared: 100 / 300 / 600 / 1,000
 for 1 / 2 / 3 / 4 rows. Score is separate. Preserve lifetime XP without

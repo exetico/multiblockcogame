@@ -355,7 +355,7 @@ function updateHUD() {
     game.players.forEach(p => {
       const relay = p.piece != null && p.piece.relayOwner !== null;
       const note = $('relay-' + p.id);
-      note.textContent = relay ? '⇄ RELAY — pass before locking' : !p.canHold ? 'Park used. Lock to reset.' : '';
+      note.textContent = relay ? '⇄ RELAY — hand off before lock, or miss' : !p.canHold ? 'Park used. Lock to reset.' : '';
       note.hidden = !relay && p.canHold;
       note.classList.toggle('active', relay);
     });
@@ -415,9 +415,10 @@ function processEvents() {
 function frame(now) {
   const dt = Math.min(100, Math.max(0, now - lastTime));
   lastTime = now;
+  const serials = game.players.map(player => player.serial);
   input.update(dt, game);
   if (state === 'playing' && !isDialogOpen()) {
-    game.tick(dt);
+    game.tick(dt, game.players.filter(player => player.serial !== serials[player.id]).map(player => player.id));
     processEvents();
   }
   updateHUD();
