@@ -478,8 +478,10 @@ test('a zero-score round still requires confirmation and the memory card works o
 test('three memory slots persist exact stages, confirm destructive actions and restore paused', async ({ page }) => {
   await begin(page);
   await page.keyboard.press('Space');
+  await expect(page.locator('#score')).not.toHaveText('000000');
   await page.keyboard.press('KeyK');
   await page.keyboard.press('KeyV');
+  await expect(page.locator('#exchange-status')).toContainText('Player 1 asks');
   await page.getByRole('button', { name: 'Save stages', exact: true }).click();
   await expect(page.locator('.stage-card')).toHaveCount(3);
   await expect(page.locator('#overlay-title')).toContainText('pause');
@@ -490,6 +492,7 @@ test('three memory slots persist exact stages, confirm destructive actions and r
   await page.locator('#stages-done').click();
   await page.locator('#pause').click();
   await page.keyboard.press('Enter');
+  await expect(page.locator('#score')).not.toHaveText(String(original.score).padStart(6, '0'));
   await page.getByRole('button', { name: 'Save stages', exact: true }).click();
   await stageButton(page, 'save', 3).click();
   const updated = (await readCard(page)).slots[2].game;
