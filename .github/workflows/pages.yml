@@ -33,7 +33,7 @@ jobs:
           path: dist
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && vars.ENABLE_PAGES == 'true'
     needs: verify
     runs-on: ubuntu-latest
     permissions:

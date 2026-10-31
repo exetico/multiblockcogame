@@ -38,7 +38,7 @@
             <div class="next-header"><span class="eyebrow">UP NEXT</span><span class="subtle">3 PIECES</span></div>
             <canvas id="next-0" class="next-canvas" width="180" height="210" aria-label="Player one next pieces"></canvas>
             <div class="relay-note" id="relay-0">Your side. Our score.</div>
-            <div class="controls"><div><span>Move</span><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><div><span>Rotate</span><span><kbd>Q</kbd><kbd>W</kbd></span></div><div><span>Drop</span><kbd class="wide-key">SPACE</kbd></div><div><span>Park</span><kbd>C</kbd></div><div><span>Exchange</span><kbd>V</kbd></div></div>
+            <div class="controls keyboard-controls" id="keys-0"></div>
             <div class="side-foot"><span class="mini-line"></span> BUILT FOR TWO</div>
           </aside>
 
@@ -65,7 +65,7 @@
             <div class="next-header"><span class="eyebrow">UP NEXT</span><span class="subtle">3 PIECES</span></div>
             <canvas id="next-1" class="next-canvas" width="180" height="210" aria-label="Player two next pieces"></canvas>
             <div class="relay-note" id="relay-1">Different sides. Same team.</div>
-            <div class="controls"><div><span>Move</span><span><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span></div><div><span>Rotate ↺ / ↻</span><span><kbd class="wide-key">R SHIFT</kbd><kbd>↑</kbd></span></div><div><span>Drop</span><kbd class="wide-key">ENTER</kbd></div><div><span>Park</span><kbd class="wide-key">R CTRL</kbd></div><div><span>Trade</span><kbd class="wide-key">BACKSPACE</kbd></div></div>
+            <div class="controls keyboard-controls" id="keys-1"></div>
             <div class="side-foot"><span class="mini-line"></span> BETTER TOGETHER</div>
           </aside>
         </section>
@@ -76,7 +76,7 @@
           <div class="exchange-status"><span class="exchange-icon" aria-hidden="true">⇄</span><div><span class="eyebrow">PIECE EXCHANGE</span><span id="exchange-status">Both press exchange to trade</span></div></div>
         </section>
       </main>
-      <footer><span>FALL TOGETHER. RISE TOGETHER.</span><span><button id="controllers" class="text-button">CONTROLLER SETUP <span id="pad-count">0/2</span></button><span class="footer-dot">·</span><button id="restart" class="text-button">NEW GAME</button></span></footer>
+      <footer><span>FALL TOGETHER. RISE TOGETHER.</span><span><button id="remap" class="text-button">CONTROLS</button><span class="footer-dot">·</span><button id="controllers" class="text-button">CONTROLLER SETUP <span id="pad-count">0/2</span></button><span class="footer-dot">·</span><button id="restart" class="text-button">NEW GAME</button></span></footer>
     </div>
 
     <dialog id="layout-dialog" aria-labelledby="layout-title">
@@ -99,6 +99,7 @@
         <label><span><strong>Grid lines</strong><small>Show cell guides. The shared columns remain highlighted either way.</small></span><input id="setting-grid" type="checkbox" checked /></label>
         <label><span><strong>Keyboard hints</strong><small>Compact controls below each player's next pieces.</small></span><input id="setting-hints" type="checkbox" checked /></label>
       </div>
+      <button id="settings-remap" class="text-button remap-link">CUSTOMIZE KEYS &amp; BUTTONS →</button>
       <p class="help-fineprint">Opening settings pauses play. Move away to close, then resume when ready. Focus is independent of fullscreen.</p>
       <button id="settings-done" class="primary-button">DONE <span>↗</span></button>
     </dialog>
@@ -114,19 +115,35 @@
       <div id="pad-devices" class="pad-devices" aria-live="polite"></div>
       <p id="pad-diagnostic">Waiting for a controller. Connect it and press a button.</p>
       <button id="swap-controllers" class="text-button" disabled>SWITCH CONTROLLER SIDES ⇄</button>
-      <div class="pad-controls"><span><b>D-pad / left stick</b> Move / soft drop</span><span><b>A / Cross</b> Rotate ↻</span><span><b>B / Circle</b> Rotate ↺</span><span><b>X / Square</b> Hard drop</span><span><b>Y / Triangle</b> Park</span><span><b>LB / RB</b> Exchange</span><span><b>Start / Options</b> Pause / resume</span></div>
+      <div class="pad-controls pad-legend"></div>
+      <button id="controllers-remap" class="text-button remap-link">REMAP CONTROLLER BUTTONS →</button>
       <p class="help-fineprint">Requires HTTPS or localhost and a browser-supported standard gamepad mapping. USB and Bluetooth support varies by controller, operating system, and browser. If nothing appears, press a button, try a USB data cable or an updated Chrome/Edge/Firefox, and check your device's controller settings. Unsupported mappings are reported below. Browser privacy settings may block gamepad access.</p>
       <p class="help-fineprint">Opening this guide or disconnecting a controller pauses play. Closing it leaves the round paused. Switching sides changes input ownership, not your active pieces or progress.</p>
       <button id="controllers-done" class="primary-button">READY <span>↗</span></button>
+    </dialog>
+
+    <dialog id="controls-dialog" aria-labelledby="controls-title">
+      <div class="dialog-heading"><span class="eyebrow">YOUR KEYS. YOUR WAY.</span><button id="close-controls" class="icon-button" aria-label="Close controls">×</button></div>
+      <h2 id="controls-title">Make it fit<br /><em>your hands.</em></h2>
+      <p>Select a slot, then press a key or controller button. Escape cancels. Choosing a key already in use swaps the two. Each action has a main and an optional extra binding. Saved in this browser.</p>
+      <div class="remap-tabs" role="tablist" aria-label="Control set">
+        <button role="tab" id="tab-keys-0" data-tab="keys-0" aria-selected="true">LEFT KEYBOARD</button>
+        <button role="tab" id="tab-keys-1" data-tab="keys-1" aria-selected="false">RIGHT KEYBOARD</button>
+        <button role="tab" id="tab-pad" data-tab="pad" aria-selected="false">CONTROLLER</button>
+      </div>
+      <div id="remap-table" class="remap-table" role="tabpanel"></div>
+      <p id="remap-status" class="remap-status" aria-live="polite"></p>
+      <div class="remap-actions"><button id="reset-tab" class="text-button">RESET THIS SET</button><button id="reset-all" class="text-button">RESET ALL TO DEFAULTS</button></div>
+      <button id="controls-done" class="primary-button">DONE <span>↗</span></button>
     </dialog>
 
     <dialog id="help-dialog">
       <div class="dialog-heading"><span class="eyebrow">THE FIELD GUIDE</span><button id="close-help" class="icon-button" aria-label="Close instructions">×</button></div>
       <h2>A shared space.<br /><em>A shared win.</em></h2>
       <p>Fill complete horizontal rows across the <strong>entire 12 × 12 field</strong>. Each player has a seven-column reach; the <strong>two glowing center columns belong to both of you</strong>. Pieces cannot pass through each other. If either side tops out, the round ends for the team.</p>
-      <div class="help-grid"><section><h3>01 / Park it</h3><p>There’s one shared park slot. Press <kbd>C</kbd> / <kbd>RIGHT CTRL</kbd> to store your piece or take the parked one. Once per active piece, until you lock it.</p></section><section><h3>02 / Pass it</h3><p>Press <kbd>V</kbd> / <kbd>BACKSPACE</kbd> to request a trade; your partner presses theirs to confirm. Both pieces respawn on their new side. Press again to cancel.</p></section><section><h3>03 / Relay pieces</h3><p>Every tenth piece per player is marked <strong>⇄</strong>. It must change hands before it can lock. Trade it, or park it for your partner. Optional before a new game.</p></section><section><h3>04 / Make it count</h3><p>Clear 1 / 2 / 3 / 4 rows at once for <strong>100 / 300 / 600 / 1,000 XP</strong>. Score also rewards spins, combos, back-to-back big clears, and drops. Every ten rows raises the level.</p></section></div>
-      <p>Right player: use the arrow cluster to move; <kbd>↑</kbd> rotates clockwise and <kbd>RIGHT SHIFT</kbd> counterclockwise. <kbd>ENTER</kbd> drops, <kbd>RIGHT CTRL</kbd> parks, and <kbd>BACKSPACE</kbd> exchanges. These shortcuts use physical keys, not Danish punctuation characters. Left player: W rotates clockwise, Q counterclockwise.</p>
-      <section class="gamepad-help"><h3>Controllers welcome.</h3><p>Connect a standard controller and press a button. The first controller plays <strong>right</strong>; the second plays <strong>left</strong>. Keyboards stay active.</p><div class="pad-controls"><span><b>D-pad / stick</b> Move / soft drop</span><span><b>A / Cross</b> Rotate clockwise</span><span><b>B / Circle</b> Rotate counterclockwise</span><span><b>X / Square</b> Hard drop</span><span><b>Y / Triangle</b> Park</span><span><b>LB / RB</b> Exchange</span><span><b>Start / Options</b> Pause / resume</span></div></section>
+      <div class="help-grid"><section><h3>01 / Park it</h3><p>There’s one shared park slot. Press <kbd data-bind="0:park">C</kbd> / <kbd data-bind="1:park">R CTRL</kbd> to store your piece or take the parked one. Once per active piece, until you lock it.</p></section><section><h3>02 / Pass it</h3><p>Press <kbd data-bind="0:exchange">V</kbd> / <kbd data-bind="1:exchange">BACKSPACE</kbd> to request a trade; your partner presses theirs to confirm. Both pieces respawn on their new side. Press again to cancel.</p></section><section><h3>03 / Relay pieces</h3><p>Every tenth piece per player is marked <strong>⇄</strong>. It must change hands before it can lock. Trade it, or park it for your partner. Optional before a new game.</p></section><section><h3>04 / Make it count</h3><p>Clear 1 / 2 / 3 / 4 rows at once for <strong>100 / 300 / 600 / 1,000 XP</strong>. Score also rewards spins, combos, back-to-back big clears, and drops. Every ten rows raises the level.</p></section></div>
+      <p>Left player: <kbd data-bind="0:left">A</kbd> <kbd data-bind="0:down">S</kbd> <kbd data-bind="0:right">D</kbd> move, <kbd data-bind="0:cw">W</kbd> / <kbd data-bind="0:ccw">Q</kbd> rotate, <kbd data-bind="0:drop">SPACE</kbd> drops. Right player: <kbd data-bind="1:left">←</kbd> <kbd data-bind="1:down">↓</kbd> <kbd data-bind="1:right">→</kbd> move, <kbd data-bind="1:cw">↑</kbd> / <kbd data-bind="1:ccw">R SHIFT</kbd> rotate, <kbd data-bind="1:drop">ENTER</kbd> drops. Keys are physical positions, so they work on Danish and other layouts. Change any key or controller button under <strong>CONTROLS</strong> in the footer.</p>
+      <section class="gamepad-help"><h3>Controllers welcome.</h3><p>Connect a standard controller and press a button. The first controller plays <strong>right</strong>; the second plays <strong>left</strong>. Keyboards stay active.</p><div class="pad-controls pad-legend"></div></section>
       <p class="help-fineprint">Ghost outlines show the landing position. Escape pauses. Use FOCUS for a larger field and the gear for display settings. Sound is synthesized on your device. Best score and lifetime team XP stay in this browser. A keyboard or controller is required; touch controls are not included.</p>
       <button id="help-done" class="primary-button">GOT IT <span>↗</span></button>
     </dialog>

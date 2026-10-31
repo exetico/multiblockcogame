@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Input, KEYMAP } from '../src/input.js';
+import { Input, KEYMAP, DEFAULT_BINDINGS, cloneBindings, normalizeBindings, assignBinding, clearBinding, keyLabel, buttonLabel, isReservedKey } from '../src/input.js';
 
 test('sub-frame key taps are delivered once, in order across players', () => {
   const handlers = {};
@@ -76,4 +76,76 @@ test('controller assignments survive partner disconnection and can switch sides'
     if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor);
     else delete globalThis.navigator;
   }
+});
+
+test('assigning a key in use swaps it, and adding an extra key moves it', () => {
+  const swapped = assignBinding(DEFAULT_BINDINGS, 'keys', [0, 'cw', 0], 'ArrowUp');
+  assert.equal(swapped.moved, '1:cw');
+  assert.deepEqual(swapped.bindings.keys[0].cw, ['ArrowUp']);
+  assert.deepEqual(swapped.bindings.keys[1].cw, ['KeyW']);
+  assert.deepEqual(DEFAULT_BINDINGS.keys[0].cw, ['KeyW'], 'defaults are never mutated');
+  const extra = assignBinding(DEFAULT_BINDINGS, 'keys', [0, 'cw', 1], 'KeyE');
+  assert.deepEqual(extra.bindings.keys[0].cw, ['KeyW', 'KeyE']);
+  assert.equal(extra.moved, null);
+  const stolen = assignBinding(DEFAULT_BINDINGS, 'keys', [0, 'cw', 1], 'KeyQ');
+  assert.deepEqual(stolen.bindings.keys[0].ccw, [], 'an action may become unbound and is reported in the UI');
+  const pad = assignBinding(DEFAULT_BINDINGS, 'pad', ['drop', 0], 5);
+  assert.deepEqual(pad.bindings.pad.drop, [5]);
+  assert.deepEqual(pad.bindings.pad.exchange, [4, 2]);
+  assert.deepEqual(clearBinding(DEFAULT_BINDINGS, 'pad', ['exchange', 0]).pad.exchange, [5]);
+});
+
+test('custom bindings drive gameplay for keyboard and controller', () => {
+  const handlers = {};
+  const oldWindow = globalThis.window;
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  globalThis.window = { addEventListener: (name, fn) => { handlers[name] = fn; } };
+  const buttons = Array.from({ length: 17 }, () => ({ pressed: false }));
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { getGamepads: () => [{ index: 0, id: 'Pad', mapping: 'standard', connected: true, buttons, axes: [0, 0] }] } });
+  try {
+    const input = new Input({ onPause() {}, onActivate() {}, onPads() {}, isPlaying: () => true, isDialogOpen: () => false });
+    let bindings = assignBinding(DEFAULT_BINDINGS, 'keys', [1, 'park', 0], 'KeyL').bindings;
+    bindings = assignBinding(bindings, 'pad', ['drop', 0], 7).bindings;
+    input.setBindings(bindings);
+    const calls = [];
+    const game = { move() {}, rotate() {}, park: id => calls.push(['park', id]), exchange() {}, hardDrop: id => calls.push(['drop', id]) };
+    input.update(16, game);
+    handlers.keydown({ code: 'KeyL', repeat: false, target: { closest: () => null }, preventDefault() {} });
+    handlers.keydown({ code: 'ControlRight', repeat: false, target: { closest: () => null }, preventDefault() {} });
+    buttons[2].pressed = true;
+    input.update(16, game);
+    assert.deepEqual(calls, [['park', 1]], 'old key and old button no longer act');
+    buttons[7].pressed = true;
+    input.update(16, game);
+    assert.deepEqual(calls.at(-1), ['drop', 1]);
+  } finally {
+    globalThis.window = oldWindow;
+    if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor);
+    else delete globalThis.navigator;
+  }
+});
+
+test('stored bindings are validated; reserved, duplicate or malformed data falls back', () => {
+  const custom = assignBinding(DEFAULT_BINDINGS, 'keys', [1, 'drop', 0], 'Numpad0').bindings;
+  assert.deepEqual(normalizeBindings(JSON.parse(JSON.stringify(custom))), custom);
+  assert.deepEqual(normalizeBindings(null), cloneBindings());
+  const reserved = cloneBindings(custom);
+  reserved.keys[0].drop = ['Escape'];
+  assert.deepEqual(normalizeBindings(reserved).keys, cloneBindings().keys);
+  const duplicate = cloneBindings(custom);
+  duplicate.keys[0].drop = ['Enter'];
+  duplicate.keys[1].drop = ['Enter'];
+  assert.deepEqual(normalizeBindings(duplicate).keys, cloneBindings().keys);
+  assert.deepEqual(normalizeBindings({ keys: custom.keys, pad: { drop: [99] } }).keys, custom.keys);
+  assert.ok(isReservedKey('Escape') && isReservedKey('Tab') && !isReservedKey('KeyA'));
+});
+
+test('labels show layout characters when available, otherwise physical names', () => {
+  assert.equal(keyLabel('KeyA'), 'A');
+  assert.equal(keyLabel('ShiftRight'), 'R SHIFT');
+  assert.equal(keyLabel('Slash', new Map([['Slash', '-']])), '-');
+  assert.equal(keyLabel('Semicolon', new Map([['Semicolon', 'æ']])), 'Æ');
+  assert.equal(keyLabel('ArrowUp', new Map([['ArrowUp', 'x']])), '↑');
+  assert.equal(buttonLabel(0), 'A / CROSS');
+  assert.equal(buttonLabel(20), 'BUTTON 20');
 });

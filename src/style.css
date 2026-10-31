@@ -53,7 +53,7 @@
   .controls{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;padding-top:12px}
   .controls>div{justify-content:flex-start;gap:5px;font-size:9px;flex-wrap:wrap}
   .controls>div:first-child{grid-column:1/-1}
-  .player-two .controls:not(.controller-controls)>div:nth-child(2){grid-column:1/-1}
+  .keyboard-controls>div.full{grid-column:1/-1}
   .controls kbd{height:19px;min-width:19px;font-size:9px}
   .controls .wide-key{min-width:48px;font-size:7px}
   .focus-mode .app{max-width:none;padding:0 20px}
@@ -115,3 +115,23 @@
   .focus-mode .shared-dock{margin:8px 0;padding:8px}
   .focus-mode footer{min-height:28px}
 }
+/* Controls remapping */
+.remap-link{display:block;margin-top:10px;color:var(--mint)}
+#controls-dialog{max-width:620px}
+.remap-tabs{display:flex;gap:6px;margin:6px 0 10px;flex-wrap:wrap}
+.remap-tabs button{border:1px solid var(--line);background:transparent;border-radius:20px;padding:7px 13px;font-size:9px;letter-spacing:1.2px;color:var(--muted)}
+.remap-tabs button[aria-selected=true]{border-color:var(--mint);color:var(--mint);background:#79e3cb12}
+.remap-table{display:grid}
+.remap-row{display:grid;grid-template-columns:1fr minmax(0,150px) minmax(0,150px);gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line);font-size:11px}
+.remap-row.unbound>span:first-child{color:var(--peach)}
+.remap-cell{display:flex;align-items:center;gap:4px;min-width:0}
+.remap-slot{flex:1;min-width:0;height:30px;border:1px solid #ffffff1c;border-bottom-width:2px;border-radius:5px;background:#ffffff06;font-size:10px;letter-spacing:.8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.remap-slot:hover:not(:disabled){border-color:var(--mint)}
+.remap-slot.empty{color:var(--muted);border-style:dashed}
+.remap-slot.waiting{border-color:var(--mint);color:var(--mint);animation:remap-pulse 1s ease-in-out infinite}
+@keyframes remap-pulse{50%{background:#79e3cb1c}}
+.remap-clear{border:0;background:none;color:var(--muted);font-size:15px;width:20px;padding:0}
+.remap-clear:hover{color:var(--peach)}
+.remap-status{min-height:22px;margin:10px 0 0;font-size:11px}
+.remap-actions{display:flex;gap:18px;flex-wrap:wrap}
+@media(max-width:560px){.remap-row{grid-template-columns:1fr 1fr;}.remap-row>span:first-child{grid-column:1/-1}}

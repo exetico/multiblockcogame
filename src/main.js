@@ -1,6 +1,6 @@
 import { Game } from './engine.js';
 import { Renderer } from './render.js';
-import { Input } from './input.js';
+import { Input, ACTIONS, PAD_ACTIONS, ACTION_LABELS, DEFAULT_BINDINGS, cloneBindings, normalizeBindings, assignBinding, clearBinding, keyLabel, buttonLabel, isReservedKey } from './input.js';
 import { Sound } from './audio.js';
 
 const $ = id => document.getElementById(id);
@@ -12,7 +12,7 @@ function toast(message) {
   toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4200);
 }
 
-const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, focus: true, grid: true, hints: true, layoutChosen: false };
+const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, focus: true, grid: true, hints: true, layoutChosen: false, controls: null };
 let saved = { ...defaults };
 let storageAvailable = true;
 try {
@@ -28,6 +28,7 @@ try {
       grid: typeof parsed.grid === 'boolean' ? parsed.grid : true,
       hints: typeof parsed.hints === 'boolean' ? parsed.hints : true,
       layoutChosen: parsed.layoutChosen === true,
+      controls: parsed.controls ? normalizeBindings(parsed.controls) : null,
     };
   }
 } catch (error) {
@@ -107,7 +108,7 @@ const dockHome = document.createComment('Shared space home');
 scoreboard.before(scoreHome);
 dock.before(dockHome);
 const wideScreen = window.matchMedia('(min-width: 701px)');
-const isDialogOpen = () => $('help-dialog').open || $('settings-dialog').open || $('layout-dialog').open || $('controller-dialog').open;
+const isDialogOpen = () => $('help-dialog').open || $('settings-dialog').open || $('layout-dialog').open || $('controller-dialog').open || $('controls-dialog').open;
 
 function applyDisplay() {
   document.body.classList.toggle('focus-mode', saved.focus);
@@ -208,25 +209,68 @@ const input = new Input({
   },
 });
 
-const padHints = [
-  ['Move', 'D-PAD / STICK'], ['Rotate ↻', 'A / CROSS'], ['Rotate ↺', 'B / CIRCLE'],
-  ['Drop', 'X / SQUARE'], ['Park', 'Y / TRIANGLE'], ['Exchange', 'LB / RB'],
-];
-for (const selector of ['.player-one', '.player-two']) {
-  const hints = document.createElement('div');
-  hints.className = 'controls controller-controls';
-  for (const [label, key] of padHints) {
-    const row = document.createElement('div');
-    const name = document.createElement('span');
-    name.textContent = label;
-    const button = document.createElement('kbd');
-    button.className = 'wide-key';
-    button.textContent = key;
-    row.append(name, button);
-    hints.append(row);
+let keyboardLayout = null;
+let bindings = saved.controls ? cloneBindings(saved.controls) : cloneBindings();
+input.setBindings(bindings);
+const keyName = code => (code ? keyLabel(code, keyboardLayout) : '—');
+const short = index => buttonLabel(index).split(' / ')[0];
+const padName = list => (list.length === 0 ? '—' : list.length === 1 ? buttonLabel(list[0]) : list.map(short).join(' / '));
+const isDefaultMove = () => ['left', 'down', 'right'].every(action => String(bindings.pad[action]) === String(DEFAULT_BINDINGS.pad[action]));
+
+function hintRow(label, values) {
+  const row = document.createElement('div');
+  const name = document.createElement('span');
+  name.textContent = label;
+  const keys = document.createElement('span');
+  for (const value of values) {
+    const key = document.createElement('kbd');
+    key.textContent = value;
+    if (value.length > 2) key.className = 'wide-key';
+    keys.append(key);
   }
-  document.querySelector(selector + ' .controls').after(hints);
+  row.append(name, keys);
+  if (values.length > 1 && values.join('').length > 4) row.className = 'full';
+  return row;
 }
+
+function renderBindings() {
+  for (const id of [0, 1]) {
+    const map = bindings.keys[id];
+    const first = action => keyName(map[action][0]);
+    $(`keys-${id}`).replaceChildren(
+      hintRow('Move', [first('left'), first('down'), first('right')]),
+      hintRow([first('ccw'), first('cw')].join('').length > 4 ? 'Rotate ↺ / ↻' : 'Rotate', [first('ccw'), first('cw')]),
+      hintRow('Drop', [first('drop')]),
+      hintRow('Park', [first('park')]),
+      hintRow('Trade', [first('exchange')]),
+    );
+  }
+  const pad = bindings.pad;
+  const move = isDefaultMove() ? 'D-PAD / STICK' : `STICK / ${['left', 'down', 'right'].map(action => (pad[action].length ? short(pad[action][0]) : '—')).join(' ')}`;
+  const padRows = [['Move', move], ['Rotate ↻', padName(pad.cw)], ['Rotate ↺', padName(pad.ccw)], ['Drop', padName(pad.drop)], ['Park', padName(pad.park)], ['Exchange', padName(pad.exchange)]];
+  document.querySelectorAll('.controller-controls').forEach(element => element.remove());
+  for (const selector of ['.player-one', '.player-two']) {
+    const hints = document.createElement('div');
+    hints.className = 'controls controller-controls';
+    hints.append(...padRows.map(([label, value]) => hintRow(label, [value])));
+    document.querySelector(selector + ' .keyboard-controls').after(hints);
+  }
+  const legend = [['Stick', 'Move / soft drop'], ...PAD_ACTIONS.map(action => [padName(pad[action]), ACTION_LABELS[action]])];
+  document.querySelectorAll('.pad-legend').forEach(element => element.replaceChildren(...legend.map(([button, label]) => {
+    const item = document.createElement('span');
+    const name = document.createElement('b');
+    name.textContent = button;
+    item.append(name, ' ' + label);
+    return item;
+  })));
+  document.querySelectorAll('[data-bind]').forEach(element => {
+    const [id, action] = element.dataset.bind.split(':');
+    element.textContent = keyName(bindings.keys[id][action][0]);
+  });
+}
+renderBindings();
+navigator.keyboard?.getLayoutMap?.().then(map => { keyboardLayout = map; renderBindings(); renderRemap(); }).catch(() => {});
+const tradeKey = id => keyName(bindings.keys[id].exchange[0]);
 
 function updateControllers(slots, unsupported = false) {
   $('pad-count').textContent = `${slots.length}/2`;
@@ -302,7 +346,7 @@ function processEvents() {
   for (const event of game.drainEvents()) {
     if (event.type === 'notice') { toast(event.message); continue; }
     audio.play(event.type, event.count);
-    if (event.type === 'request') toast(`Player ${event.id + 1} wants to exchange. Partner, press ${event.id === 0 ? 'Backspace' : 'V'} or a bumper.`);
+    if (event.type === 'request') toast(`Player ${event.id + 1} wants to exchange. Partner, press ${tradeKey(1 - event.id)} or ${padName(bindings.pad.exchange)}.`);
     if (event.type === 'exchange') announce('A GOOD EXCHANGE', 'TWO SIDES. ONE TEAM.');
     if (event.type === 'lock') {
       shell.classList.remove('shake');
@@ -430,6 +474,176 @@ for (const id of ['controllers', 'device-0', 'device-1']) $(id).addEventListener
 for (const id of ['close-controllers', 'controllers-done']) $(id).addEventListener('click', () => $('controller-dialog').close());
 $('controller-dialog').addEventListener('close', () => { input.reset(); blurButton(); });
 $('swap-controllers').addEventListener('click', () => input.swapPads());
+
+let remapTab = 'keys-0';
+let capture = null;
+let captureEndedAt = 0;
+let padFrame = 0;
+const remapKind = () => (remapTab === 'pad' ? 'pad' : 'keys');
+const remapPlayer = () => Number(remapTab.slice(-1));
+const describe = name => {
+  if (!name.includes(':')) return `Controller · ${ACTION_LABELS[name]}`;
+  const [id, action] = name.split(':');
+  return `${id === '0' ? 'Left' : 'Right'} · ${ACTION_LABELS[action]}`;
+};
+
+function renderRemap() {
+  if (!$('controls-dialog').open) return;
+  const kind = remapKind();
+  const actions = kind === 'pad' ? PAD_ACTIONS : ACTIONS;
+  const lists = kind === 'pad' ? bindings.pad : bindings.keys[remapPlayer()];
+  document.querySelectorAll('.remap-tabs [role=tab]').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === remapTab)));
+  $('remap-table').replaceChildren(...actions.map(action => {
+    const row = document.createElement('div');
+    row.className = 'remap-row';
+    if (!lists[action].length) row.classList.add('unbound');
+    const label = document.createElement('span');
+    label.textContent = ACTION_LABELS[action] + (lists[action].length ? '' : ' · UNBOUND');
+    row.append(label);
+    for (const slot of [0, 1]) {
+      const value = lists[action][slot];
+      const cell = document.createElement('span');
+      cell.className = 'remap-cell';
+      const button = document.createElement('button');
+      button.className = 'remap-slot';
+      button.dataset.action = action;
+      button.dataset.slot = String(slot);
+      const waiting = capture && capture.action === action && capture.slot === slot;
+      button.textContent = waiting ? (kind === 'pad' ? 'PRESS BUTTON…' : 'PRESS KEY…') : value === undefined ? (slot ? '+ ADD' : '—') : kind === 'pad' ? buttonLabel(value) : keyName(value);
+      if (waiting) button.classList.add('waiting');
+      if (value === undefined && slot) button.classList.add('empty');
+      button.disabled = slot === 1 && lists[action].length === 0;
+      button.setAttribute('aria-label', `${ACTION_LABELS[action]}, ${slot ? 'extra' : 'main'} binding: ${button.textContent}. Select to change.`);
+      button.addEventListener('click', event => {
+        if (event.detail === 0 && performance.now() - captureEndedAt < 300) return;
+        startCapture(action, Math.min(slot, lists[action].length));
+      });
+      cell.append(button);
+      if (value !== undefined) {
+        const clear = document.createElement('button');
+        clear.className = 'remap-clear';
+        clear.textContent = '×';
+        clear.setAttribute('aria-label', `Remove ${button.textContent} from ${ACTION_LABELS[action]}`);
+        clear.addEventListener('click', () => {
+          const target = kind === 'pad' ? [action, slot] : [remapPlayer(), action, slot];
+          commitBindings(clearBinding(bindings, kind, target), `Removed from ${ACTION_LABELS[action]}.`);
+        });
+        cell.append(clear);
+      }
+      row.append(cell);
+    }
+    return row;
+  }));
+}
+
+function commitBindings(next, message) {
+  bindings = next;
+  saved.controls = cloneBindings(bindings);
+  input.setBindings(bindings);
+  save();
+  renderBindings();
+  const unbound = bindings.keys.flatMap((map, id) => ACTIONS.filter(action => !map[action].length).map(action => `${id}:${action}`))
+    .concat(PAD_ACTIONS.filter(action => !bindings.pad[action].length));
+  $('remap-status').textContent = message + (unbound.length ? ` Unbound: ${unbound.map(describe).join(', ')}.` : '');
+  renderRemap();
+}
+
+function startCapture(action, slot) {
+  stopCapture();
+  capture = { action, slot, kind: remapKind() };
+  $('remap-status').textContent = capture.kind === 'pad' ? `Press a controller button for ${ACTION_LABELS[action]}. Escape cancels.` : `Press a key for ${ACTION_LABELS[action]}. Escape cancels.`;
+  renderRemap();
+  document.querySelector(`.remap-slot[data-action="${action}"][data-slot="${slot}"]`)?.focus();
+  if (capture.kind === 'pad') {
+    const held = () => new Set((navigator.getGamepads ? Array.from(navigator.getGamepads()) : []).filter(pad => pad?.connected)
+      .flatMap(pad => pad.buttons.map((button, index) => (button.pressed ? index : -1)).filter(index => index >= 0 && index <= 16)));
+    let baseline = held();
+    const poll = () => {
+      if (!capture || capture.kind !== 'pad') return;
+      const now = held();
+      const fresh = [...now].find(index => !baseline.has(index));
+      baseline = new Set([...baseline].filter(index => now.has(index)));
+      if (fresh !== undefined) finishCapture(fresh);
+      else padFrame = requestAnimationFrame(poll);
+    };
+    padFrame = requestAnimationFrame(poll);
+  }
+}
+
+function stopCapture() {
+  cancelAnimationFrame(padFrame);
+  if (capture) captureEndedAt = performance.now();
+  capture = null;
+}
+
+function finishCapture(value) {
+  const { action, slot, kind } = capture;
+  stopCapture();
+  const target = kind === 'pad' ? [action, slot] : [remapPlayer(), action, slot];
+  const label = kind === 'pad' ? buttonLabel(value) : keyName(value);
+  const { bindings: next, moved } = assignBinding(bindings, kind, target, value);
+  commitBindings(next, `${label} → ${ACTION_LABELS[action]}.${moved ? ` Swapped with ${describe(moved)}.` : ''}`);
+  document.querySelector(`.remap-slot[data-action="${action}"][data-slot="${Math.min(slot, (kind === 'pad' ? bindings.pad : bindings.keys[remapPlayer()])[action].length - 1)}"]`)?.focus();
+}
+
+document.addEventListener('keydown', event => {
+  if (!capture) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (event.repeat) return;
+  if (event.code === 'Escape') {
+    stopCapture();
+    $('remap-status').textContent = 'Cancelled. Nothing changed.';
+    renderRemap();
+    return;
+  }
+  if (capture.kind === 'pad') return;
+  if (isReservedKey(event.code) || !event.code) {
+    $('remap-status').textContent = `${event.code || 'That key'} is reserved. Escape always pauses. Try another key.`;
+    return;
+  }
+  finishCapture(event.code);
+}, true);
+document.addEventListener('keyup', event => {
+  if ($('controls-dialog').open && performance.now() - captureEndedAt < 300) event.preventDefault();
+}, true);
+$('controls-dialog').addEventListener('cancel', event => {
+  if (capture || performance.now() - captureEndedAt < 300) event.preventDefault();
+});
+
+function openRemap(tab) {
+  closeSettings();
+  if ($('controller-dialog').open) $('controller-dialog').close();
+  if (state === 'playing') pause();
+  input.reset();
+  if (typeof tab === 'string') remapTab = tab;
+  $('remap-status').textContent = '';
+  $('controls-dialog').showModal();
+  renderRemap();
+}
+$('remap').addEventListener('click', () => openRemap());
+$('settings-remap').addEventListener('click', () => openRemap());
+$('controllers-remap').addEventListener('click', () => openRemap('pad'));
+document.querySelectorAll('.remap-tabs [role=tab]').forEach(tab => tab.addEventListener('click', () => {
+  stopCapture();
+  remapTab = tab.dataset.tab;
+  $('remap-status').textContent = '';
+  renderRemap();
+}));
+$('reset-tab').addEventListener('click', () => {
+  stopCapture();
+  const next = cloneBindings(bindings);
+  const defaults = cloneBindings();
+  if (remapKind() === 'pad') next.pad = defaults.pad;
+  else next.keys[remapPlayer()] = defaults.keys[remapPlayer()];
+  const codes = next.keys.flatMap(map => Object.values(map).flat());
+  // Restoring one keyboard set can collide with custom keys on the other; restore both if so.
+  if (new Set(codes).size !== codes.length) next.keys = defaults.keys;
+  commitBindings(next, new Set(codes).size !== codes.length ? 'Defaults restored for both keyboards to avoid duplicate keys.' : 'Defaults restored for this set.');
+});
+$('reset-all').addEventListener('click', () => { stopCapture(); commitBindings(cloneBindings(), 'All keys and buttons restored to defaults.'); });
+for (const id of ['close-controls', 'controls-done']) $(id).addEventListener('click', () => $('controls-dialog').close());
+$('controls-dialog').addEventListener('close', () => { stopCapture(); input.reset(); blurButton(); });
 $('restart').addEventListener('click', () => {
   if (state === 'playing') pause();
   if ((state === 'paused' && (game.score || game.players.some(p => p.queue.length && p.canHold === false))) || game.lines) {
