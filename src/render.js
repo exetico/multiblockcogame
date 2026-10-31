@@ -102,10 +102,6 @@ export class Renderer {
       for (const [x, y] of cells(p.piece)) {
         if (y < 0) continue;
         block(ctx, x * sx, y * sy, sx, p.piece.type);
-        ctx.strokeStyle = OWNER[p.id];
-        ctx.lineWidth = 1.2;
-        rounded(ctx, x * sx + 1.5, y * sy + 1.5, sx - 3, sy - 3, sx * 0.1);
-        ctx.stroke();
         if (p.piece.relayOwner !== null) {
           ctx.fillStyle = '#14212b';
           ctx.textAlign = 'center';

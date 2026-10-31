@@ -107,7 +107,7 @@ const dockHome = document.createComment('Shared space home');
 scoreboard.before(scoreHome);
 dock.before(dockHome);
 const wideScreen = window.matchMedia('(min-width: 701px)');
-const isDialogOpen = () => $('help-dialog').open || $('settings-dialog').open || $('layout-dialog').open;
+const isDialogOpen = () => $('help-dialog').open || $('settings-dialog').open || $('layout-dialog').open || $('controller-dialog').open;
 
 function applyDisplay() {
   document.body.classList.toggle('focus-mode', saved.focus);
@@ -193,17 +193,61 @@ const input = new Input({
   isDialogOpen,
   onPads(slots, lost, unsupported) {
     [0, 1].forEach(id => {
-      $('device-' + id).textContent = slots.some(slot => slot.player === id) ? 'CONTROLLER + KEYS' : 'KEYBOARD';
+      const connected = slots.some(slot => slot.player === id);
+      $('device-' + id).textContent = connected ? 'CONTROLLER + KEYS' : 'KEYBOARD · CONNECT PAD';
+      document.querySelector(id === 0 ? '.player-one' : '.player-two').classList.toggle('has-controller', connected);
     });
+    updateControllers(slots, unsupported);
     if (lost && state === 'playing') {
       pause();
       toast('Controller disconnected. Paused so you can reconnect.');
     } else if (slots.length) {
-      toast(`${slots.length === 1 ? 'Controller connected: right player.' : 'Controllers connected: first = right, second = left.'} Start / Options pauses.`);
+      toast(`Controller sides: ${slots.map(slot => `pad ${slot.index + 1} = ${slot.player === 0 ? 'left' : 'right'}`).join(', ')}. Start / Options pauses.`);
     }
     if (unsupported) toast('This controller has no standard mapping. Use a standard gamepad or the keyboard.');
   },
 });
+
+const padHints = [
+  ['Move', 'D-PAD / STICK'], ['Rotate ↻', 'A / CROSS'], ['Rotate ↺', 'B / CIRCLE'],
+  ['Drop', 'X / SQUARE'], ['Park', 'Y / TRIANGLE'], ['Exchange', 'LB / RB'],
+];
+for (const selector of ['.player-one', '.player-two']) {
+  const hints = document.createElement('div');
+  hints.className = 'controls controller-controls';
+  for (const [label, key] of padHints) {
+    const row = document.createElement('div');
+    const name = document.createElement('span');
+    name.textContent = label;
+    const button = document.createElement('kbd');
+    button.className = 'wide-key';
+    button.textContent = key;
+    row.append(name, button);
+    hints.append(row);
+  }
+  document.querySelector(selector + ' .controls').after(hints);
+}
+
+function updateControllers(slots, unsupported = false) {
+  $('pad-count').textContent = `${slots.length}/2`;
+  $('swap-controllers').disabled = slots.length === 0;
+  $('pad-devices').replaceChildren();
+  for (const id of [0, 1]) {
+    const entry = document.createElement('div');
+    const heading = document.createElement('strong');
+    heading.textContent = `${id === 0 ? 'LEFT' : 'RIGHT'} PLAYER`;
+    const device = document.createElement('span');
+    device.textContent = slots.find(slot => slot.player === id)?.name ?? 'Keyboard · no controller assigned';
+    entry.append(heading, device);
+    $('pad-devices').append(entry);
+  }
+  $('pad-diagnostic').textContent = !window.isSecureContext ? 'Gamepad access requires HTTPS or localhost.' :
+    !navigator.getGamepads ? 'This browser does not expose gamepad access. Use the keyboard or a supported browser.' :
+    unsupported ? 'A controller was detected without a standard mapping. Try USB or another browser; keyboard play remains available.' :
+    slots.length ? `${slots.length} standard controller${slots.length === 1 ? '' : 's'} ready. Live button hints appear on each connected side.` :
+    'Waiting for a controller. Connect it and press a button.';
+}
+updateControllers([]);
 
 function persistProgress() {
   const newXP = game.xp - creditedXP;
@@ -258,7 +302,7 @@ function processEvents() {
   for (const event of game.drainEvents()) {
     if (event.type === 'notice') { toast(event.message); continue; }
     audio.play(event.type, event.count);
-    if (event.type === 'request') toast(`Player ${event.id + 1} wants to exchange. Partner, press ${event.id === 0 ? ',' : 'V'} or a bumper.`);
+    if (event.type === 'request') toast(`Player ${event.id + 1} wants to exchange. Partner, press ${event.id === 0 ? 'Backspace' : 'V'} or a bumper.`);
     if (event.type === 'exchange') announce('A GOOD EXCHANGE', 'TWO SIDES. ONE TEAM.');
     if (event.type === 'lock') {
       shell.classList.remove('shake');
@@ -311,7 +355,7 @@ $('focus').addEventListener('click', () => {
 let settingsCloseTimer;
 function openSettings(origin) {
   clearTimeout(settingsCloseTimer);
-  if ($('settings-dialog').open || $('help-dialog').open || $('layout-dialog').open) return;
+  if (isDialogOpen()) return;
   if (state === 'playing') pause(true);
   input.reset();
   const active = document.activeElement;
@@ -376,6 +420,16 @@ $('choose-classic').addEventListener('click', () => chooseLayout(false));
 $('skip-layout').addEventListener('click', () => chooseLayout(true));
 $('layout-dialog').addEventListener('cancel', event => { event.preventDefault(); chooseLayout(true); });
 $('layout-dialog').addEventListener('close', () => { input.reset(); blurButton(); });
+function openControllers() {
+  closeSettings();
+  if (state === 'playing') pause();
+  input.reset();
+  $('controller-dialog').showModal();
+}
+for (const id of ['controllers', 'device-0', 'device-1']) $(id).addEventListener('click', openControllers);
+for (const id of ['close-controllers', 'controllers-done']) $(id).addEventListener('click', () => $('controller-dialog').close());
+$('controller-dialog').addEventListener('close', () => { input.reset(); blurButton(); });
+$('swap-controllers').addEventListener('click', () => input.swapPads());
 $('restart').addEventListener('click', () => {
   if (state === 'playing') pause();
   if ((state === 'paused' && (game.score || game.players.some(p => p.queue.length && p.canHold === false))) || game.lines) {

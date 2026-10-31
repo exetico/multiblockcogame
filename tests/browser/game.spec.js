@@ -135,7 +135,7 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     expect(score.x + score.width).toBeLessThan(board.x);
     expect(dock.x).toBeGreaterThan(board.x + board.width);
     for (const id of [0, 1]) {
-      expect((await page.locator(`.player-${id === 0 ? 'one' : 'two'} .controls`).boundingBox()).height).toBeLessThan(100);
+      expect((await page.locator(`.player-${id === 0 ? 'one' : 'two'} .controls:visible`).boundingBox()).height).toBeLessThan(125);
     }
     const pageSize = await page.evaluate(() => ({
       width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
@@ -260,7 +260,7 @@ test('display settings pause safely, change grid rendering and hints, and persis
   await page.locator('#setting-hints').uncheck();
   await page.locator('#setting-focus').check();
   await expect(page.getByRole('button', { name: 'Toggle focus mode' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.player-one .controls')).toBeHidden();
+  await expect(page.locator('.player-one .controls:visible')).toHaveCount(0);
   await page.keyboard.press('ArrowDown');
   await expect(page.locator('#score')).toHaveText(score);
   await page.getByRole('button', { name: 'DONE', exact: false }).click();
@@ -277,4 +277,52 @@ test('display settings pause safely, change grid rendering and hints, and persis
   await expect(page.locator('#setting-focus')).toBeChecked();
   await page.keyboard.press('Escape');
   await expect(page.locator('#settings-dialog')).toBeHidden();
+});
+
+test('Danish-friendly right controls are shown and deliver rotate, park and exchange actions', async ({ page }) => {
+  await begin(page);
+  await expect(page.locator('.player-two .controls:visible')).toContainText('R SHIFT');
+  await expect(page.locator('.player-two .controls:visible')).toContainText('R CTRL');
+  await expect(page.locator('.player-two .controls:visible')).toContainText('BACKSPACE');
+  const before = await page.locator('#board').evaluate(canvas => canvas.toDataURL());
+  await page.keyboard.press('ShiftRight');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ControlRight');
+  await expect(page.locator('#hold')).not.toHaveAttribute('aria-label', 'Shared parked piece, empty');
+  await page.keyboard.press('Backspace');
+  await expect(page.locator('#exchange-status')).toContainText('Player 2 asks');
+  await page.keyboard.press('KeyV');
+  await expect(page.locator('#exchange-status')).toContainText('Both press');
+  expect(await page.locator('#board').evaluate(canvas => canvas.toDataURL())).not.toBe(before);
+});
+
+test('visible controller guide explains Bluetooth, detects devices, switches sides and shows pad hints', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.testPads = [];
+    Object.defineProperty(navigator, 'getGamepads', { value: () => window.testPads });
+  });
+  await begin(page);
+  await page.locator('#controllers').click();
+  await expect(page.locator('#controller-dialog')).toBeVisible();
+  await expect(page.locator('#controller-dialog')).toContainText("computer's Bluetooth settings");
+  await expect(page.locator('#overlay-title')).toContainText('pause');
+  await expect(page.locator('#swap-controllers')).toBeDisabled();
+  await page.evaluate(() => {
+    window.testPads = [0, 1].map(index => ({
+      index, id: `Standard pad ${index + 1}`, mapping: 'standard', connected: true,
+      axes: [0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false })),
+    }));
+  });
+  await expect(page.locator('#pad-count')).toHaveText('2/2');
+  await expect(page.locator('#pad-devices')).toContainText('Standard pad 1');
+  await expect(page.locator('.player-two .controls:visible')).toContainText('A / CROSS');
+  await page.locator('#swap-controllers').click();
+  await expect(page.locator('#pad-devices > div').first()).toContainText('Standard pad 1');
+  await page.evaluate(() => { window.testPads = [window.testPads[1]]; });
+  await expect(page.locator('#pad-count')).toHaveText('1/2');
+  await expect(page.locator('#pad-devices > div').last()).toContainText('Standard pad 2');
+  await expect(page.locator('.player-one .controls:visible')).toContainText('SPACE');
+  await page.locator('#controllers-done').click();
+  await expect(page.locator('#controller-dialog')).toBeHidden();
+  await expect(page.locator('#overlay-title')).toContainText('pause');
 });

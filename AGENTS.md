@@ -44,6 +44,16 @@ for 1 / 2 / 3 / 4 rows. Score is separate. Preserve lifetime XP without
 double-crediting the current game, and surface storage failures visibly.
 There are no networking, server, account, or runtime external dependencies.
 
+Right-player defaults use physical ArrowUp/ShiftRight/Enter/ControlRight/
+Backspace keys, not punctuation-dependent labels. Keep old punctuation aliases
+for compatibility. Controller setup must be discoverable in the UI and explain
+OS-level Bluetooth pairing and browser standard-mapping requirements. Never
+claim the browser pairs devices or knows their connection transport. Preserve
+connected controllers' side assignments on disconnect; side switching changes
+input ownership only and takes place while the setup dialog gates gameplay.
+Show controller hints for assigned players and retain keyboard fallback.
+Active pieces have no player-colored ownership borders; preserve landing ghosts.
+
 ## Development
 
 Requires Node.js 22.12+ (or 20.19+) and npm.
