@@ -205,25 +205,87 @@ test('wall kicks rotate an I piece away from the player boundary', () => {
   assert.ok(cells(game.players[0].piece).every(([x]) => x >= 0 && x < 7));
 });
 
-test('neither player can cross their reach or overlap an active partner', () => {
+test('players can overlap while falling but cannot cross their reach', () => {
   const game = make();
   game.players[0].piece = piece('O', 4, 4);
   game.players[1].piece = piece('O', 6, 4);
-  assert.equal(game.move(1, -1), false);
-  assert.equal(game.move(0, 1), false);
+  assert.equal(game.move(1, -1), true);
+  assert.equal(game.move(0, 1), false, 'field boundary remains solid');
+  assert.equal(game.move(1, 0, 1), true);
   for (let n = 0; n < 20; n++) game.move(0, -1);
   assert.equal(Math.min(...cells(game.players[0].piece).map(([x]) => x)), 0);
 });
 
-test('a hard drop onto an airborne partner does not lock floating blocks', () => {
+test('hard drop passes through an airborne partner and locks on the floor', () => {
   const game = make();
   game.players[0].piece = piece('O', 4, 0);
   game.players[1].piece = piece('O', 4, 6);
   game.hardDrop(0);
-  assert.equal(game.players[0].piece.y, 4);
-  assert.equal(game.board.flat().filter(Boolean).length, 0);
-  for (let i = 0; i < 6; i++) game.tick(100);
-  assert.equal(game.board.flat().filter(Boolean).length, 0);
+  assert.equal(game.board.flat().filter(Boolean).length, 4);
+  assert.equal(game.board[11][5].owner, 0);
+  assert.equal(game.ghost(1).y, 8);
+  assert.ok(!game.drainEvents().some(event => event.type === 'notice'));
+});
+
+for (const first of [0, 1]) {
+  test(`overlapping pieces share landings; player ${first + 1} locks first and lifts the other`, () => {
+    const game = make();
+    game.players[0].piece = piece('O', 4, 10);
+    game.players[1].piece = piece('O', 4, 10);
+    assert.equal(game.ghost(0).y, 10);
+    assert.equal(game.ghost(1).y, 10);
+    const other = 1 - first;
+    const serial = game.players[other].serial;
+    game.players[other].lockTime = 499;
+    game.hardDrop(first);
+    assert.equal(game.board[11][5].owner, first);
+    assert.equal(game.players[other].piece.y, 8);
+    assert.equal(game.players[other].piece.x, 4);
+    assert.equal(game.players[other].piece.rotation, 0);
+    assert.equal(game.players[other].serial, serial);
+    assert.equal(game.players[other].lockTime, 0);
+    assert.equal(game.ghost(other).y, 8);
+    assert.deepEqual(Game.restore(game.snapshot()).snapshot(), game.snapshot());
+    game.hardDrop(other);
+    assert.equal(game.board[9][5].owner, other);
+    assert.equal(game.board.flat().filter(Boolean).length, 8);
+  });
+}
+
+test('overlapping automatic locks are resolved by earliest deadline, not player order', () => {
+  const game = make();
+  game.players.forEach(player => { player.piece = piece('O', 4, 10); });
+  game.players[0].lockTime = 450;
+  game.players[1].lockTime = 480;
+  game.tick(100);
+  assert.equal(game.board[11][5].owner, 1);
+  assert.equal(game.players[0].piece.y, 8);
+  assert.equal(game.players[0].lockTime, 80);
+});
+
+test('rotation, park and stage restore accept overlapping falling pieces', () => {
+  const game = make();
+  game.players[0].piece = piece('T', 4, 4);
+  game.players[1].piece = piece('O', 4, 4);
+  assert.equal(game.rotate(0), true);
+  assert.deepEqual(Game.restore(game.snapshot()).snapshot(), game.snapshot());
+  game.players[1].piece = piece('I', 4, -2, { rotation: 1 });
+  game.hold = { type: 'I', relayOwner: null };
+  assert.equal(game.park(1), true);
+  assert.equal(game.over, false);
+});
+
+test('overlap displacement keeps a rotated partner and its park allowance intact', () => {
+  const game = make();
+  game.players[0].piece = piece('O', 4, 10);
+  game.players[1].piece = piece('I', 3, 8, { rotation: 1 });
+  game.players[1].canHold = false;
+  game.hardDrop(0);
+  assert.equal(game.players[1].piece.x, 3);
+  assert.equal(game.players[1].piece.y, 6);
+  assert.equal(game.players[1].piece.rotation, 1);
+  assert.equal(game.players[1].canHold, false);
+  assert.ok(game.fits(game.players[1].piece, 1));
 });
 
 test('a piece locks after 500ms on the settled floor, not before', () => {
@@ -279,8 +341,8 @@ test('shared park can be taken by either player and is once per active piece', (
 test('park fails atomically if the incoming piece has no spawn space', () => {
   const game = make();
   game.players[1].piece = piece('O', 8, 9);
-  game.players[0].piece = piece('I', 4, -2, { rotation: 1 });
   game.hold = { type: 'I', relayOwner: null };
+  game.fits = () => false;
   const before = structuredClone(game.players[1].piece);
   assert.equal(game.park(1), false);
   assert.deepEqual(game.players[1].piece, before);
@@ -517,14 +579,14 @@ test('soft drop resets gravity and spawning during input does not consume the ol
   assert.equal(game.players[0].lockTime, 0);
 });
 
-test('a new piece blocked by an airborne partner enters nearby without false game over', () => {
+test('spawn can overlap an airborne partner without shifting or false game over', () => {
   const game = make();
   game.players[0].piece = piece('I', 4, -2, { rotation: 1 });
   game.spawn(game.players[1], { type: 'I', relayOwner: null });
   assert.equal(game.over, false);
   assert.ok(game.fits(game.players[1].piece, 1));
-  assert.equal(game.players[1].piece.y, -3);
-  assert.equal(game.players[1].piece.x, 7);
+  assert.equal(game.players[1].piece.y, -1);
+  assert.equal(game.players[1].piece.x, 6);
   assert.deepEqual(Game.restore(game.snapshot()).snapshot(), game.snapshot());
 });
 

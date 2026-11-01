@@ -50,7 +50,12 @@ The user explicitly specified **12 columns by 12 rows**, with **two shared
 columns**. Left reach is x=0-6, right reach x=5-11, overlap x=5-6 (zero-based).
 Rows clear only across the entire 12-column width.
 
-Active pieces cannot overlap or lock onto an airborne partner. Relays have
+Active pieces may overlap and pass through each other; only settled cells,
+field boundaries and the floor are solid. Ghosts ignore falling partners.
+First to lock claims the cells. After placement and row collapse, lift an
+overlapping partner minimally without changing x/rotation; reset its lock/gravity
+timers, not its piece serial or park allowance. Process automatic deadlines in
+chronological order (player order breaks exact ties). Relays have
 the normal lock deadline: missed handoffs emit a visible notice and lock
 normally, rather than freezing. Hard drop locks immediately, with a miss if
 untraded. Parking disables parking until a lock or successful exchange.
@@ -61,8 +66,8 @@ Park and exchange must be atomic if spawn
 space is blocked. Row collapse must preserve a legal airborne partner.
 Crowded spawns enter in hidden rows (minimum occupied cell y=-2; horizontal
 I may use origin y=-3). Top-out occurs when locking above the visible board,
-not merely because the default spawn intersects a top-row cell. Avoid killing
-the round when an airborne partner occupies shared spawn columns.
+not merely because the default spawn intersects a top-row cell. Falling
+partners must not block spawn, park, trade, movement, rotation or save restore.
 Tick splits gravity/lock boundaries and counts only actual grounded time.
 New-piece serials reset soft-drop repeat and discard stale queued actions.
 The frame's pre-input dt must not age pieces spawned by input that frame.

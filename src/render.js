@@ -93,6 +93,7 @@ export class Renderer {
     game.board.forEach((row, y) => row.forEach((cell, x) => {
       if (cell) block(ctx, x * sx, y * sy, sx, cell.type, 0.86);
     }));
+    const activeCells = game.players.map(p => p.piece ? cells(p.piece) : []);
     if (!game.over) game.players.forEach(p => {
       if (!p.piece) return;
       const ghost = game.ghost(p.id);
@@ -100,12 +101,17 @@ export class Renderer {
       ctx.lineWidth = 1;
       for (const [x, y] of cells(ghost)) {
         if (y < 0) continue;
-        rounded(ctx, x * sx + 2, y * sy + 2, sx - 4, sy - 4, 2);
+        const inset = p.id === 0 ? 2 : 4;
+        rounded(ctx, x * sx + inset, y * sy + inset, sx - inset * 2, sy - inset * 2, 2);
         ctx.stroke();
       }
+    });
+    if (!game.over) game.players.forEach(p => {
+      if (!p.piece) return;
       for (const [x, y] of cells(p.piece)) {
         if (y < 0) continue;
-        block(ctx, x * sx, y * sy, sx, p.piece.type);
+        const overlapping = activeCells[1 - p.id].some(([ox, oy]) => ox === x && oy === y);
+        block(ctx, x * sx, y * sy, sx, p.piece.type, overlapping ? 0.65 : 1);
         if (p.piece.relayOwner !== null) {
           ctx.fillStyle = '#14212b';
           ctx.textAlign = 'center';

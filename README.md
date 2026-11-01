@@ -12,8 +12,11 @@ the layout scales to small screens, but touch controls are not included.
 ## How to play
 
 Each player can move within seven columns. The **middle two columns overlap**:
-both players can place pieces there, but active pieces cannot pass through each
-other. Complete a row across **all 12 columns** to clear it. If either player
+both players can place pieces there. Falling pieces can overlap and pass through
+each other; their landing outlines can share the same cells. The first piece to
+lock claims those cells, regardless of who moved there first. The other falling
+piece lifts only as far as needed, keeping its horizontal position and rotation.
+Complete a row across **all 12 columns** to clear it. If either player
 locks a piece with cells above the board, the round ends for the team.
 Crowded top rows do not end the round on appearance: a new piece can enter
 in the hidden rows and use the normal lock window to move or rotate to safety.
@@ -45,7 +48,7 @@ in the hidden rows and use the normal lock window to move or rotate to safety.
 
 Gravity starts fresh for each new piece. The lock timer counts only time
 actually resting on settled blocks/floor, not time spent falling or resting
-on an airborne partner. Soft drop does not add an extra simultaneous gravity
+on another falling piece. Soft drop does not add an extra simultaneous gravity
 step. Successful movement/rotation resets the lock delay up to fifteen times
 (including square-piece rotation); the limit prevents indefinite stalling.
 Rapid keyboard rotation taps and held-key rotation repeats are accepted.
@@ -65,7 +68,7 @@ relay cadence, scoring, and input mappings are original choices.
 | Soft drop | S | ↓ | Down |
 | Rotate clockwise | E | . | A / Cross |
 | Rotate counterclockwise | Q | , | B / Circle |
-| Hard drop | Space | ↑ / Enter | X / Square |
+| Hard drop | W | ↑ / Enter | X / Square |
 | Park / retrieve | C | K | Y / Triangle |
 | Request / confirm exchange | V | L | Either bumper |
 | Pause / resume | Escape | Escape | Start / Options |
