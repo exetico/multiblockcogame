@@ -263,6 +263,58 @@ test('overlapping automatic locks are resolved by earliest deadline, not player 
   assert.equal(game.players[0].lockTime, 80);
 });
 
+test('coordinated outlines put the lower, earlier-arriving piece underneath without changing state', () => {
+  const game = make();
+  game.players[0].piece = piece('O', 4, 1);
+  game.players[1].piece = piece('I', 5, 2);
+  const before = game.snapshot();
+  const landings = game.projectedLandings();
+  assert.equal(landings[1].y, 10);
+  assert.equal(landings[0].y, 9);
+  assert.ok(!cells(landings[0]).some(([x, y]) =>
+    cells(landings[1]).some(([ox, oy]) => x === ox && y === oy)));
+  assert.deepEqual(game.snapshot(), before);
+  assert.equal(game.ghost(0).y, 10, 'hard drop remains independent of the forecast');
+});
+
+for (const first of [0, 1]) {
+  test(`coordinated outlines match natural settling when player ${first + 1} has earlier gravity progress`, () => {
+    const game = make();
+    game.players.forEach(player => { player.piece = piece('O', 4, 4); });
+    game.players[first].gravity = 400;
+    const landings = game.projectedLandings();
+    assert.equal(landings[first].y, 10);
+    assert.equal(landings[1 - first].y, 8);
+    const locked = [];
+    const lock = game.lock.bind(game);
+    game.lock = id => {
+      locked.push({ id, piece: { ...game.players[id].piece } });
+      lock(id);
+    };
+    for (let frame = 0; frame < 100 && locked.length < 2; frame++) game.tick(100);
+    assert.equal(locked.length, 2);
+    assert.equal(locked[0].id, first);
+    for (const entry of locked) assert.equal(entry.piece.y, landings[entry.id].y);
+  });
+}
+
+test('coordinated outlines update for lock resets, ties, separation and an early hard drop', () => {
+  const game = make();
+  game.players.forEach(player => { player.piece = piece('O', 4, 10); });
+  assert.deepEqual(game.projectedLandings().map(piece => piece.y), [10, 8]);
+  game.players[1].lockTime = 300;
+  assert.deepEqual(game.projectedLandings().map(piece => piece.y), [8, 10]);
+  game.rotate(1);
+  assert.deepEqual(game.projectedLandings().map(piece => piece.y), [10, 8]);
+  game.players[1].lockTime = 300;
+  game.hardDrop(0);
+  assert.equal(game.board[11][5].owner, 0, 'hard drop can reverse the forecast');
+  assert.equal(game.projectedLandings()[1].y, 8);
+  game.players[0].piece = piece('O', 0, 4);
+  game.players[1].piece = piece('O', 8, 4);
+  assert.deepEqual(game.projectedLandings().map(piece => piece.y), [10, 10]);
+});
+
 test('rotation, park and stage restore accept overlapping falling pieces', () => {
   const game = make();
   game.players[0].piece = piece('T', 4, 4);

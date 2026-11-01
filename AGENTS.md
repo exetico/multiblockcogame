@@ -51,7 +51,11 @@ columns**. Left reach is x=0-6, right reach x=5-11, overlap x=5-6 (zero-based).
 Rows clear only across the entire 12-column width.
 
 Active pieces may overlap and pass through each other; only settled cells,
-field boundaries and the floor are solid. Ghosts ignore falling partners.
+field boundaries and the floor are solid. Hard-drop landings ignore falling
+partners. Render coordinated projectedLandings instead: estimate automatic lock
+deadlines from distance/gravity/lock delay, reserve the earliest placement, then
+land the other above it. Left wins exact deadline ties, matching tick.
+Preview placement before row clears; never mutate the board, timers or randomizer.
 First to lock claims the cells. After placement and row collapse, lift an
 overlapping partner minimally without changing x/rotation; reset its lock/gravity
 timers, not its piece serial or park allowance. Process automatic deadlines in
