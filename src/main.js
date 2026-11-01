@@ -355,7 +355,7 @@ function updateHUD() {
     game.players.forEach(p => {
       const relay = p.piece != null && p.piece.relayOwner !== null;
       const note = $('relay-' + p.id);
-      note.textContent = relay ? '⇄ RELAY — hand off before lock, or miss' : !p.canHold ? 'Park used. Lock to reset.' : '';
+      note.textContent = relay ? '⇄ RELAY — hand off before lock, or miss' : !p.canHold ? 'Park used. Lock or trade to reset.' : '';
       note.hidden = !relay && p.canHold;
       note.classList.toggle('active', relay);
     });
