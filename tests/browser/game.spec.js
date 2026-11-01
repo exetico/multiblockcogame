@@ -805,7 +805,7 @@ async function loadTestStage(page, stage) {
 }
 
 for (const first of [0, 1]) {
-  test(`overlapping stage shows shared landings and player ${first + 1} can claim them first`, async ({ page }) => {
+  test(`overlapping stage shows separate predicted landings and player ${first + 1} can claim the bottom first`, async ({ page }) => {
     const game = new Game({ random: () => 0.43, relays: false });
     game.players.forEach(player => {
       player.piece = { type: 'O', x: 4, y: 10, rotation: 0, relayOwner: null, lastRotate: false };
@@ -815,11 +815,11 @@ for (const first of [0, 1]) {
       const { Renderer } = await import('/src/render.js');
       const draw = Renderer.prototype.draw;
       Renderer.prototype.draw = function (game) {
-        window.landings = game.players.map(player => game.ghost(player.id).y);
+        window.landings = game.projectedLandings().map(piece => piece.y);
         return draw.call(this, game);
       };
     });
-    await expect.poll(() => page.evaluate(() => window.landings)).toEqual([10, 10]);
+    await expect.poll(() => page.evaluate(() => window.landings)).toEqual([10, 8]);
     await expect(page.locator('#keys-0')).toContainText('W');
     await page.locator('#pause').click();
     await page.keyboard.press(first === 0 ? 'KeyW' : 'ArrowUp');

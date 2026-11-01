@@ -160,10 +160,10 @@ export class Game {
     return candidate;
   }
 
-  fits(piece, id) {
+  fits(piece, id, board = this.board) {
     return cells(piece).every(([x, y]) =>
       x >= id * STRIDE && x < id * STRIDE + FIELD && y >= -2 && y < HEIGHT &&
-      (y < 0 || !this.board[y][x]),
+      (y < 0 || !board[y][x]),
     );
   }
 
@@ -224,9 +224,38 @@ export class Game {
   }
 
   ghost(id) {
-    let piece = { ...this.players[id].piece };
-    while (this.fits({ ...piece, y: piece.y + 1 }, id)) piece.y++;
+    return this.landing(this.players[id].piece, id);
+  }
+
+  landing(active, id, board = this.board) {
+    const piece = { ...active };
+    while (!this.fits(piece, id, board) &&
+      Math.min(...cells(piece).map(([, y]) => y)) > -2) piece.y--;
+    while (this.fits({ ...piece, y: piece.y + 1 }, id, board)) piece.y++;
     return piece;
+  }
+
+  projectedLandings() {
+    const projections = this.players.map(player => {
+      if (!player.piece) return null;
+      const landing = this.ghost(player.id);
+      const distance = landing.y - player.piece.y;
+      const deadline = distance > 0
+        ? Math.max(0, distance * this.gravityInterval - player.gravity) + 500
+        : 500 - player.lockTime;
+      return { id: player.id, landing, deadline };
+    }).filter(Boolean).sort((a, b) => a.deadline - b.deadline || a.id - b.id);
+    const board = this.board.map(row => [...row]);
+    const result = [null, null];
+    for (const projection of projections) {
+      const landing = this.landing(this.players[projection.id].piece, projection.id, board);
+      result[projection.id] = landing;
+      // Reserve each predicted placement before drawing the next outline.
+      for (const [x, y] of cells(landing)) {
+        if (y >= 0) board[y][x] = { type: landing.type, owner: projection.id };
+      }
+    }
+    return result;
   }
 
   hardDrop(id) {

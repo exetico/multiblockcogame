@@ -13,7 +13,12 @@ the layout scales to small screens, but touch controls are not included.
 
 Each player can move within seven columns. The **middle two columns overlap**:
 both players can place pieces there. Falling pieces can overlap and pass through
-each other; their landing outlines can share the same cells. The first piece to
+each other; their landing outlines predict separate placements. The piece
+expected to lock first gets the lower outline, based on remaining fall distance,
+gravity progress and lock delay (left first on an exact tie). Outlines update
+when you move, rotate or drop; an early hard drop can reverse the predicted order.
+They show placement before row clears, not the subsequent row-collapse animation.
+The first piece to
 lock claims those cells, regardless of who moved there first. The other falling
 piece lifts only as far as needed, keeping its horizontal position and rotation.
 Complete a row across **all 12 columns** to clear it. If either player

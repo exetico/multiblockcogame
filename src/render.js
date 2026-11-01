@@ -94,14 +94,15 @@ export class Renderer {
       if (cell) block(ctx, x * sx, y * sy, sx, cell.type, 0.86);
     }));
     const activeCells = game.players.map(p => p.piece ? cells(p.piece) : []);
+    const landings = game.over ? [] : game.projectedLandings();
     if (!game.over) game.players.forEach(p => {
       if (!p.piece) return;
-      const ghost = game.ghost(p.id);
+      const ghost = landings[p.id];
       ctx.strokeStyle = OWNER[p.id] + '66';
       ctx.lineWidth = 1;
       for (const [x, y] of cells(ghost)) {
         if (y < 0) continue;
-        const inset = p.id === 0 ? 2 : 4;
+        const inset = 2;
         rounded(ctx, x * sx + inset, y * sy + inset, sx - inset * 2, sy - inset * 2, 2);
         ctx.stroke();
       }
