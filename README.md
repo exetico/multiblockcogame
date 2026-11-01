@@ -19,7 +19,9 @@ Crowded top rows do not end the round on appearance: a new piece can enter
 in the hidden rows and use the normal lock window to move or rotate to safety.
 
 - **Shared park:** store your current piece or swap with the parked one. Either
-  player can take it. You can park once per active piece until you lock it.
+  player can take it. After parking, you cannot park again until you lock or
+  complete a trade. The piece drawn by parking does not restore parking;
+  a piece received through a confirmed trade does.
 - **Exchange:** request a trade; your partner presses their exchange button to
   confirm. Both pieces respawn upright on their new sides. Press your own
   exchange button again to cancel. Blocked spawn areas prevent a trade without
@@ -35,6 +37,11 @@ in the hidden rows and use the normal lock window to move or rotate to safety.
   landings, three-piece previews, soft/hard drops, 500 ms lock delay with up to
   15 movement/rotation resets, rising gravity, combos, back-to-back clears, and
   three-corner T-spin recognition.
+
+- [ ] **Rules confirmation TODO:** confirm with the original shared-mode rules
+  that park → confirmed trade → park is allowed. This is the current intended
+  interpretation, not yet independently verified; requests, cancellations and
+  blocked trades never restore parking.
 
 Gravity starts fresh for each new piece. The lock timer counts only time
 actually resting on settled blocks/floor, not time spent falling or resting

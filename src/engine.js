@@ -256,7 +256,7 @@ export class Game {
     if (this.over) return false;
     const player = this.players[id];
     if (!player.canHold) {
-      this.emit('notice', { id, message: 'Lock this piece before parking again.' });
+      this.emit('notice', { id, message: 'Lock or complete a trade before parking again.' });
       return false;
     }
     const current = this.item(player.piece);
@@ -302,8 +302,8 @@ export class Game {
       p.gravity = 0;
       p.lockTime = 0;
       p.resets = 0;
+      p.canHold = true;
     });
-    // Exchanging must not bypass the once-per-lock park limit.
     this.exchangeRequest = null;
     this.emit('exchange');
     return true;

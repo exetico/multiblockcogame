@@ -53,8 +53,11 @@ Rows clear only across the entire 12-column width.
 Active pieces cannot overlap or lock onto an airborne partner. Relays have
 the normal lock deadline: missed handoffs emit a visible notice and lock
 normally, rather than freezing. Hard drop locks immediately, with a miss if
-untraded. Parking is once per piece until a lock;
-exchanges do not reset that limit. Park and exchange must be atomic if spawn
+untraded. Parking disables parking until a lock or successful exchange.
+The replacement drawn by parking stays ineligible; confirmed trades restore
+eligibility for both incoming pieces. Requests, cancellations and blocked
+trades must not restore it. README tracks confirmation of this provisional rule.
+Park and exchange must be atomic if spawn
 space is blocked. Row collapse must preserve a legal airborne partner.
 Crowded spawns enter in hidden rows (minimum occupied cell y=-2; horizontal
 I may use origin y=-3). Top-out occurs when locking above the visible board,

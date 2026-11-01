@@ -288,19 +288,54 @@ test('park fails atomically if the incoming piece has no spawn space', () => {
   assert.equal(game.over, false);
 });
 
-test('exchange needs consent from both players, resets positions and preserves hold limits', () => {
+test('exchange needs consent from both players, resets positions and restores parking', () => {
   const game = make();
   game.players[0].piece = piece('T', 1, 7);
   game.players[1].piece = piece('L', 7, 7);
   game.players[0].canHold = false;
   assert.equal(game.exchange(0), false);
+  assert.equal(game.players[0].canHold, false);
   assert.equal(game.players[0].piece.type, 'T');
   assert.equal(game.exchange(1), true);
   assert.equal(game.players[0].piece.type, 'L');
   assert.equal(game.players[1].piece.type, 'T');
   assert.equal(game.players[0].piece.y, -1);
-  assert.equal(game.players[0].canHold, false);
+  assert.equal(game.players[0].canHold, true);
   assert.equal(game.exchangeRequest, null);
+});
+
+test('park then trade permits parking the incoming piece, but not consecutive parks', () => {
+  const game = make();
+  game.players[0].piece = piece('T', 1, 4);
+  game.players[1].piece = piece('L', 7, 4);
+  assert.equal(game.park(0), true);
+  assert.equal(game.park(1), true);
+  assert.equal(game.park(0), false);
+  assert.equal(game.park(1), false);
+  assert.equal(game.exchange(0), false);
+  assert.equal(game.exchange(0), false, 'cancel request');
+  assert.ok(game.players.every(player => !player.canHold));
+  game.exchange(0);
+  assert.equal(game.exchange(1), true);
+  assert.ok(game.players.every(player => player.canHold));
+  const restored = Game.restore(game.snapshot());
+  assert.ok(restored.players.every(player => player.canHold));
+  assert.equal(restored.park(0), true);
+  assert.equal(restored.park(0), false);
+  assert.equal(restored.park(1), true);
+  assert.equal(restored.park(1), false);
+});
+
+test('blocked trade leaves parking eligibility unchanged', () => {
+  const game = make();
+  game.players[0].piece = piece('O', 0, 8);
+  game.players[1].piece = piece('O', 8, 8);
+  game.players[0].canHold = false;
+  game.fits = () => false;
+  game.exchange(0);
+  assert.equal(game.exchange(1), false);
+  assert.equal(game.players[0].canHold, false);
+  assert.equal(game.players[1].canHold, true);
 });
 
 test('exchange at a crowded top uses hidden spawn rows without ending the round', () => {
