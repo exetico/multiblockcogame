@@ -6,7 +6,7 @@ export const ACTION_LABELS = {
 };
 export const DEFAULT_BINDINGS = Object.freeze({
   keys: [
-    { left: ['KeyA'], right: ['KeyD'], down: ['KeyS'], cw: ['KeyE'], ccw: ['KeyQ'], drop: ['Space'], park: ['KeyC'], exchange: ['KeyV'] },
+    { left: ['KeyA'], right: ['KeyD'], down: ['KeyS'], cw: ['KeyE'], ccw: ['KeyQ'], drop: ['KeyW'], park: ['KeyC'], exchange: ['KeyV'] },
     { left: ['ArrowLeft'], right: ['ArrowRight'], down: ['ArrowDown'], cw: ['Period'], ccw: ['Comma'], drop: ['ArrowUp', 'Enter'], park: ['KeyK'], exchange: ['KeyL'] },
   ],
   pad: { left: [14], right: [15], down: [13], cw: [0], ccw: [1], drop: [2], park: [3], exchange: [4, 5], pause: [9] },
@@ -53,6 +53,11 @@ export function migrateBindings(raw) {
   ];
   if (bindings.keys.every((map, id) => ACTIONS.every(action => String(map[action]) === String(previousDefaults[id][action])))) {
     bindings.keys = cloneBindings().keys;
+  }
+  const previousLeft = { ...DEFAULT_BINDINGS.keys[0], drop: ['Space'] };
+  if (ACTIONS.every(action => String(bindings.keys[0][action]) === String(previousLeft[action])) &&
+    !Object.values(bindings.keys[1]).some(codes => codes.includes('KeyW'))) {
+    bindings.keys[0].drop = ['KeyW'];
   }
   return bindings;
 }

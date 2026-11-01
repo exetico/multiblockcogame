@@ -144,13 +144,6 @@ export class Game {
 
   spawn(player, item) {
     player.piece = this.spawnCandidate(item ?? player.queue.shift(), player.id);
-    if (!this.fits(player.piece, player.id) && this.fits(player.piece, player.id, false)) {
-      // A partner in the shared hidden columns must not cause spawn top-out.
-      for (const dx of [1, -1, 2, -2]) {
-        const candidate = { ...player.piece, x: player.piece.x + dx };
-        if (this.fits(candidate, player.id)) { player.piece = candidate; break; }
-      }
-    }
     this.fillQueue(player);
     player.serial = (player.serial ?? 0) + 1;
     player.gravity = 0;
@@ -159,26 +152,24 @@ export class Game {
     if (!this.fits(player.piece, player.id)) this.end(player.id);
   }
 
-  spawnCandidate(item, id, includePartner = true) {
+  spawnCandidate(item, id) {
     const candidate = this.atSpawn(item, id);
     // A crowded top row is recoverable: enter in the hidden rows and give
     // the normal lock window to move, rotate, park or trade out of trouble.
-    if (!this.fits(candidate, id, includePartner)) candidate.y = item.type === 'I' ? -3 : -2;
+    if (!this.fits(candidate, id)) candidate.y = item.type === 'I' ? -3 : -2;
     return candidate;
   }
 
-  fits(piece, id, includePartner = true) {
-    const other = includePartner ? this.players[1 - id].piece : null;
-    const occupied = other ? cells(other) : [];
+  fits(piece, id) {
     return cells(piece).every(([x, y]) =>
       x >= id * STRIDE && x < id * STRIDE + FIELD && y >= -2 && y < HEIGHT &&
-      (y < 0 || !this.board[y][x]) && !occupied.some(([ox, oy]) => ox === x && oy === y),
+      (y < 0 || !this.board[y][x]),
     );
   }
 
-  grounded(id, includePartner = true) {
+  grounded(id) {
     const p = this.players[id].piece;
-    return p && !this.fits({ ...p, y: p.y + 1 }, id, includePartner);
+    return p && !this.fits({ ...p, y: p.y + 1 }, id);
   }
 
   move(id, dx, dy = 0, soft = false) {
@@ -245,11 +236,7 @@ export class Game {
     this.emit('drop', { id });
     this.score += (landing.y - player.piece.y) * 2;
     player.piece = { ...landing, lastRotate: landing.lastRotate && landing.y === player.piece.y };
-    if (this.grounded(id, false)) {
-      this.lock(id);
-    } else {
-      this.emit('notice', { id, message: 'Your partner is underneath. Give them room.' });
-    }
+    this.lock(id);
   }
 
   park(id) {
@@ -290,9 +277,8 @@ export class Game {
       return false;
     }
     const incoming = this.players.map((_, i) => this.received(this.item(this.players[1 - i].piece), i));
-    const candidates = incoming.map((item, i) => this.spawnCandidate(item, i, false));
-    if (!candidates.every((candidate, i) => this.fits(candidate, i, false)) ||
-      cells(candidates[0]).some(([x, y]) => cells(candidates[1]).some(([ox, oy]) => x === ox && y === oy))) {
+    const candidates = incoming.map((item, i) => this.spawnCandidate(item, i));
+    if (!candidates.every((candidate, i) => this.fits(candidate, i))) {
       this.emit('notice', { message: 'Exchange blocked — clear both spawn areas first.' });
       return false;
     }
@@ -322,7 +308,7 @@ export class Game {
     if (this.over) return;
     const player = this.players[id];
     const piece = player.piece;
-    if (!this.grounded(id, false)) return;
+    if (!this.grounded(id)) return;
     if (cells(piece).some(([, y]) => y < 0)) { this.end(id); return; }
     if (piece.relayOwner !== null) {
       this.emit('notice', { id, message: 'Relay missed — hand off before the piece locks next time.' });
@@ -349,16 +335,23 @@ export class Game {
       this.backToBack = difficult;
       this.board = this.board.filter((_, y) => !cleared.includes(y));
       while (this.board.length < HEIGHT) this.board.unshift(Array(WIDTH).fill(null));
-      // Settled rows can descend into an airborne partner. Lift only as far as
-      // needed to retain a legal active piece after the atomic row collapse.
-      const partner = this.players[1 - id];
-      while (!this.fits(partner.piece, partner.id) && partner.piece.y > -2) partner.piece.y--;
-      if (!this.fits(partner.piece, partner.id)) this.end(partner.id);
       this.emit('clear', { count, xp, spin, combo: this.combo, b2b, rows: cleared, levelUp: this.level > previousLevel });
     } else {
       this.combo = -1;
       this.emit('lock', { id, spin });
     }
+    // First to lock claims the cells. Resolve overlaps after any row collapse.
+    const partner = this.players[1 - id];
+    const originalY = partner.piece.y;
+    while (!this.fits(partner.piece, partner.id) &&
+      Math.min(...cells(partner.piece).map(([, y]) => y)) > -2) partner.piece.y--;
+    if (!this.fits(partner.piece, partner.id)) this.end(partner.id);
+    if (partner.piece.y !== originalY) {
+      partner.lockTime = 0;
+      partner.gravity = 0;
+      partner.piece.lastRotate = false;
+    }
+    if (!this.grounded(partner.id)) partner.lockTime = 0;
     player.canHold = true;
     this.exchangeRequest = null;
     if (!this.over) this.spawn(player);
@@ -367,26 +360,30 @@ export class Game {
   tick(dt, skipPlayers = []) {
     if (this.over) return;
     dt = Math.min(dt, 100);
-    for (const player of this.players) {
-      if (this.over) break;
-      const id = player.id;
-      if (skipPlayers.includes(id)) continue;
-      let remaining = dt;
-      while (remaining > 0 && !this.over) {
-        const grounded = this.grounded(id, false);
-        const step = Math.min(remaining, Math.max(0, this.gravityInterval - player.gravity), grounded ? 500 - player.lockTime : Infinity);
+    const skipped = new Set(skipPlayers);
+    let remaining = dt;
+    while (remaining > 0 && !this.over) {
+      const active = this.players.filter(player => !skipped.has(player.id));
+      if (!active.length) break;
+      const step = Math.min(remaining, ...active.map(player =>
+        Math.min(Math.max(0, this.gravityInterval - player.gravity),
+          this.grounded(player.id) ? 500 - player.lockTime : Infinity)));
+      for (const player of active) {
         player.gravity += step;
-        if (grounded) player.lockTime += step;
+        if (this.grounded(player.id)) player.lockTime += step;
         else player.lockTime = 0;
-        remaining -= step;
-        if (grounded && player.lockTime >= 500) {
-          this.lock(id);
-          // The elapsed frame belongs to the old piece, not its successor.
-          break;
+      }
+      remaining -= step;
+      for (const player of active) {
+        if (this.over) break;
+        if (this.grounded(player.id) && player.lockTime >= 500) {
+          this.lock(player.id);
+          skipped.add(player.id);
+          continue;
         }
         if (player.gravity >= this.gravityInterval) {
           player.gravity = 0;
-          this.move(id, 0, 1);
+          this.move(player.id, 0, 1);
         }
       }
     }

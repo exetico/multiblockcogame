@@ -18,7 +18,7 @@ test('boots without errors, starts, both players drop and park, then pauses', as
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await begin(page);
-  await page.keyboard.press('Space');
+  await page.keyboard.press('KeyW');
   await expect(page.locator('#score')).not.toHaveText('000000');
   const leftScore = await page.locator('#score').textContent();
   await page.keyboard.press('Enter');
@@ -33,7 +33,7 @@ test('boots without errors, starts, both players drop and park, then pauses', as
   await page.keyboard.press('Escape');
   await expect(page.locator('#overlay-title')).toContainText('pause');
   const before = await page.locator('#score').textContent();
-  await page.keyboard.press('Space');
+  await page.keyboard.press('KeyW');
   await expect(page.locator('#score')).toHaveText(before);
   await page.getByRole('button', { name: 'BACK TOGETHER' }).click();
   await expect(page.locator('#overlay')).toBeHidden();
@@ -58,7 +58,7 @@ test('sound, relay preference, best score and XP settings persist across reloads
   await page.getByRole('button', { name: 'Mute sound' }).click();
   await page.locator('#relay-toggle').uncheck();
   await page.getByRole('button', { name: 'LET’S PLAY' }).click();
-  await page.keyboard.press('Space');
+  await page.keyboard.press('KeyW');
   await page.waitForTimeout(1100);
   const best = await page.locator('#best').textContent();
   expect(Number(best.replaceAll(',', ''))).toBeGreaterThan(0);
@@ -89,7 +89,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1280, height: 72
     expect(Math.abs(rect.width - rect.height)).toBeLessThan(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     await page.getByRole('button', { name: 'LET’S PLAY' }).click();
-    await page.keyboard.press('Space');
+    await page.keyboard.press('KeyW');
     await expect(page.locator('#score')).not.toHaveText('000000');
   });
 }
@@ -150,7 +150,7 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
     await expect(page.locator('#pause')).toBeInViewport();
     await expect(page.locator('#restart')).toBeInViewport();
     await page.getByRole('button', { name: 'LET’S PLAY' }).click();
-    await page.keyboard.press('Space');
+    await page.keyboard.press('KeyW');
     await expect(page.locator('#score')).not.toHaveText('000000');
     await page.keyboard.press('KeyK');
     await expect(page.locator('#hold')).not.toHaveAttribute('aria-label', 'Shared parked piece, empty');
@@ -241,7 +241,7 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 72
   });
 test('focus preserves a running round, adapts across breakpoints, and persists', async ({ page }) => {
   await begin(page);
-  await page.keyboard.press('Space');
+  await page.keyboard.press('KeyW');
   await expect(page.locator('#score')).not.toHaveText('000000');
   const score = await page.locator('#score').textContent();
   await page.getByRole('button', { name: 'Toggle focus mode' }).click();
@@ -268,7 +268,7 @@ test('focus preserves a running round, adapts across breakpoints, and persists',
 
 test('display settings pause safely, change grid rendering and hints, and persist without changing rules', async ({ page }) => {
   await begin(page);
-  await page.keyboard.press('Space');
+  await page.keyboard.press('KeyW');
   await expect(page.locator('#score')).not.toHaveText('000000');
   await page.getByRole('button', { name: 'Display settings' }).click();
   await expect(page.locator('#settings-dialog')).toBeVisible();
@@ -343,7 +343,7 @@ test('visible controller guide explains Bluetooth, detects devices, switches sid
   await page.evaluate(() => { window.testPads = [window.testPads[1]]; });
   await expect(page.locator('#pad-count')).toHaveText('1/2');
   await expect(page.locator('#pad-devices > div').last()).toContainText('Standard pad 2');
-  await expect(page.locator('.control-player[data-player="0"] .controls:visible')).toContainText('SPACE');
+  await expect(page.locator('.control-player[data-player="0"] .controls:visible')).toContainText('DropW');
   await page.locator('#controllers-done').click();
   await expect(page.locator('#controller-dialog')).toBeHidden();
   await expect(page.locator('#overlay-title')).toContainText('pause');
@@ -385,7 +385,7 @@ test('keys can be remapped with swap, cancel, reserved-key protection, persisten
   await expect(page.locator('#remap-status')).toContainText('restored');
   await page.locator('#controls-done').click();
   await expect(page.locator('.control-player[data-player="1"] .keyboard-controls')).toContainText('K');
-  await expect(page.locator('.control-player[data-player="0"] .keyboard-controls')).toContainText('SPACE');
+  await expect(page.locator('.control-player[data-player="0"] .keyboard-controls')).toContainText('DropW');
 });
 
 test('controller buttons can be remapped by pressing them, from the controller guide', async ({ page }) => {
@@ -418,7 +418,7 @@ test('controller buttons can be remapped by pressing them, from the controller g
 
 test('prominent pause freezes play and New Game requires two confirmations, including cancellation', async ({ page }) => {
   await begin(page);
-  await page.keyboard.press('Space');
+  await page.keyboard.press('KeyW');
   await expect(page.locator('#score')).not.toHaveText('000000');
   await page.getByRole('button', { name: 'Pause game', exact: true }).click();
   const score = await page.locator('#score').textContent();
@@ -477,7 +477,7 @@ test('a zero-score round still requires confirmation and the memory card works o
 
 test('three memory slots persist exact stages, confirm destructive actions and restore paused', async ({ page }) => {
   await begin(page);
-  await page.keyboard.press('Space');
+  await page.keyboard.press('KeyW');
   await expect(page.locator('#score')).not.toHaveText('000000');
   await page.keyboard.press('KeyK');
   await page.keyboard.press('KeyV');
@@ -597,7 +597,7 @@ test('speed option changes and persists without changing score rules; loaded XP 
   await expect(page.locator('#xp')).toHaveText('100 XP');
   await expect(page.locator('#xp-caption')).toContainText('100 lifetime XP');
   await page.locator('#pause').click();
-  await page.keyboard.press('Space');
+  await page.keyboard.press('KeyW');
   await page.locator('#pause').click();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('common-ground-v1')).lifetimeXP)).toBe(100);
 });
@@ -710,7 +710,7 @@ test('hidden header and footer persist, reclaim space and retain pause and menu 
 
 test('Immersive is a selectable third view; replaying introduction pauses without resetting or changing the view', async ({ page }) => {
   await begin(page);
-  await page.keyboard.press('Space');
+  await page.keyboard.press('KeyW');
   await expect(page.locator('#score')).not.toHaveText('000000');
   await page.locator('#settings').click();
   const score = await page.locator('#score').textContent();
@@ -802,6 +802,39 @@ async function loadTestStage(page, stage) {
   await page.locator('#stages').click();
   await stageButton(page, 'load', 1).click();
   await expect(page.locator('#overlay-title')).toContainText('pause');
+}
+
+for (const first of [0, 1]) {
+  test(`overlapping stage shows shared landings and player ${first + 1} can claim them first`, async ({ page }) => {
+    const game = new Game({ random: () => 0.43, relays: false });
+    game.players.forEach(player => {
+      player.piece = { type: 'O', x: 4, y: 10, rotation: 0, relayOwner: null, lastRotate: false };
+    });
+    await loadTestStage(page, game);
+    await page.evaluate(async () => {
+      const { Renderer } = await import('/src/render.js');
+      const draw = Renderer.prototype.draw;
+      Renderer.prototype.draw = function (game) {
+        window.landings = game.players.map(player => game.ghost(player.id).y);
+        return draw.call(this, game);
+      };
+    });
+    await expect.poll(() => page.evaluate(() => window.landings)).toEqual([10, 10]);
+    await expect(page.locator('#keys-0')).toContainText('W');
+    await page.locator('#pause').click();
+    await page.keyboard.press(first === 0 ? 'KeyW' : 'ArrowUp');
+    await expect(page.locator('#next-' + first)).not.toHaveAttribute('aria-label',
+      `Player ${first + 1} next pieces: ${game.players[first].queue.slice(0, 3).map(item => item.type).join(', ')}`);
+    await page.locator('#stages').click();
+    await stageButton(page, 'save', 2).click();
+    const snapshot = (await readCard(page)).slots[1].game;
+    expect(snapshot.board[11][5].owner).toBe(first);
+    expect(snapshot.players[1 - first].piece.y).toBe(8);
+    expect(snapshot.players[1 - first].piece.x).toBe(4);
+    expect(snapshot.players[1 - first].piece.rotation).toBe(0);
+    expect(snapshot.board.flat().filter(Boolean)).toHaveLength(4);
+    await expect(page.locator('#toast')).not.toContainText('Your partner is underneath');
+  });
 }
 
 test('saved untraded relays settle with a miss and both players receive new pieces', async ({ page }) => {

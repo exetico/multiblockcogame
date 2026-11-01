@@ -20,7 +20,7 @@ test('sub-frame key taps are delivered once, in order across players', () => {
       exchange: id => calls.push(['exchange', id]),
       hardDrop: id => calls.push(['drop', id]),
     };
-    for (const code of ['KeyK', 'KeyV', 'KeyL', 'Space', 'ArrowUp']) {
+    for (const code of ['KeyK', 'KeyV', 'KeyL', 'KeyW', 'ArrowUp']) {
       handlers.keydown({ code, repeat: false, target: { closest: () => null }, preventDefault() {} });
       handlers.keyup({ code });
     }
@@ -42,7 +42,8 @@ test('sub-frame key taps are delivered once, in order across players', () => {
 test('defaults use paired rotation keys, Up for hard drop and K/L for park/trade', () => {
   assert.deepEqual(KEYMAP.KeyQ, [0, 'ccw']);
   assert.deepEqual(KEYMAP.KeyE, [0, 'cw']);
-  assert.equal(KEYMAP.KeyW, undefined);
+  assert.deepEqual(KEYMAP.KeyW, [0, 'drop']);
+  assert.equal(KEYMAP.Space, undefined);
   assert.deepEqual(KEYMAP.Comma, [1, 'ccw']);
   assert.deepEqual(KEYMAP.Period, [1, 'cw']);
   assert.deepEqual(KEYMAP.ArrowUp, [1, 'drop']);
@@ -132,6 +133,7 @@ test('custom bindings drive gameplay for keyboard and controller', () => {
 test('old default keyboards migrate, but custom keyboards and controller bindings are preserved', () => {
   const old = cloneBindings();
   old.keys[0].cw = ['KeyW'];
+  old.keys[0].drop = ['Space'];
   Object.assign(old.keys[1], {
     cw: ['ArrowUp'], ccw: ['ShiftRight', 'Slash'], drop: ['Enter'],
     park: ['ControlRight', 'Period'], exchange: ['Backspace', 'Comma'],
@@ -142,6 +144,19 @@ test('old default keyboards migrate, but custom keyboards and controller binding
   assert.deepEqual(migrated.pad, old.pad);
   old.keys[0].park = ['KeyB'];
   assert.deepEqual(migrateBindings(old), old);
+});
+
+test('previous left defaults migrate to W without changing custom controls', () => {
+  const previous = cloneBindings();
+  previous.keys[0].drop = ['Space'];
+  previous.keys[1].park = ['KeyB'];
+  assert.deepEqual(migrateBindings(previous).keys[0], cloneBindings().keys[0]);
+  assert.deepEqual(migrateBindings(previous).keys[1], previous.keys[1]);
+  previous.keys[0].park = ['KeyN'];
+  assert.deepEqual(migrateBindings(previous), previous);
+  previous.keys[0].park = ['KeyC'];
+  previous.keys[1].park = ['KeyW'];
+  assert.deepEqual(migrateBindings(previous), previous, 'never steal a customized key');
 });
 
 test('stored bindings are validated; reserved, duplicate or malformed data falls back', () => {
@@ -208,7 +223,7 @@ test('queued old-piece actions cannot drop or park its replacement in the same f
       park: id => calls.push(['park', id]),
       rotate: id => calls.push(['rotate', id]),
     };
-    for (const code of ['Space', 'Space', 'KeyC', 'KeyE', 'ArrowUp']) {
+    for (const code of ['KeyW', 'KeyW', 'KeyC', 'KeyE', 'ArrowUp']) {
       handlers.keydown({ code, repeat: false, target: { closest: () => null }, preventDefault() {} });
       handlers.keyup({ code });
     }
