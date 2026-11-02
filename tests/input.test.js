@@ -96,8 +96,8 @@ test('assigning a key in use swaps it, and adding an extra key moves it', () => 
   assert.deepEqual(stolen.bindings.keys[0].ccw, [], 'an action may become unbound and is reported in the UI');
   const pad = assignBinding(DEFAULT_BINDINGS, 'pad', ['drop', 0], 5);
   assert.deepEqual(pad.bindings.pad.drop, [5]);
-  assert.deepEqual(pad.bindings.pad.exchange, [4, 2]);
-  assert.deepEqual(clearBinding(DEFAULT_BINDINGS, 'pad', ['exchange', 0]).pad.exchange, [5]);
+  assert.deepEqual(pad.bindings.pad.cw, [0, 12]);
+  assert.deepEqual(clearBinding(DEFAULT_BINDINGS, 'pad', ['exchange', 0]).pad.exchange, []);
 });
 
 test('custom bindings drive gameplay for keyboard and controller', () => {
@@ -117,7 +117,7 @@ test('custom bindings drive gameplay for keyboard and controller', () => {
     input.update(16, game);
     handlers.keydown({ code: 'KeyL', repeat: false, target: { closest: () => null }, preventDefault() {} });
     handlers.keydown({ code: 'KeyK', repeat: false, target: { closest: () => null }, preventDefault() {} });
-    buttons[2].pressed = true;
+    buttons[12].pressed = true;
     input.update(16, game);
     assert.deepEqual(calls, [['park', 1]], 'old key and old button no longer act');
     buttons[7].pressed = true;
@@ -128,6 +128,51 @@ test('custom bindings drive gameplay for keyboard and controller', () => {
     if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor);
     else delete globalThis.navigator;
   }
+});
+
+test('default controller Up drops, face button trades, and bumpers duplicate rotations once per press', () => {
+  const oldWindow = globalThis.window;
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  globalThis.window = { addEventListener() {} };
+  const buttons = Array.from({ length: 17 }, () => ({ pressed: false }));
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {
+    getGamepads: () => [{ index: 0, id: 'Pad', mapping: 'standard', connected: true, buttons, axes: [0, 0] }],
+  } });
+  try {
+    const input = new Input({ onPause() {}, onActivate() {}, onPads() {}, isPlaying: () => true, isDialogOpen: () => false });
+    const calls = [];
+    const game = {
+      move() {}, rotate: (id, direction) => calls.push(['rotate', id, direction]),
+      hardDrop: id => calls.push(['drop', id]), park: id => calls.push(['park', id]),
+      exchange: id => calls.push(['exchange', id]),
+    };
+    input.update(16, game);
+    for (const button of [12, 2, 5, 0, 4, 1, 3]) {
+      buttons[button].pressed = true;
+      input.update(16, game);
+      input.update(16, game);
+      buttons[button].pressed = false;
+      input.update(16, game);
+    }
+    assert.deepEqual(calls, [
+      ['drop', 1], ['exchange', 1], ['rotate', 1, 1], ['rotate', 1, 1],
+      ['rotate', 1, -1], ['rotate', 1, -1], ['park', 1],
+    ]);
+  } finally {
+    globalThis.window = oldWindow;
+    if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor);
+    else delete globalThis.navigator;
+  }
+});
+
+test('old controller defaults migrate without overwriting custom controller or keyboard mappings', () => {
+  const old = cloneBindings();
+  old.pad = { left: [14], right: [15], down: [13], cw: [0], ccw: [1], drop: [2], park: [3], exchange: [4, 5], pause: [9] };
+  old.keys[0].park = ['KeyB'];
+  assert.deepEqual(migrateBindings(old).pad, cloneBindings().pad);
+  assert.deepEqual(migrateBindings(old).keys, old.keys);
+  old.pad.drop = [7];
+  assert.deepEqual(migrateBindings(old), old);
 });
 
 test('old default keyboards migrate, but custom keyboards and controller bindings are preserved', () => {

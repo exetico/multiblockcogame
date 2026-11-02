@@ -71,11 +71,11 @@ relay cadence, scoring, and input mappings are original choices.
 |---|---|---|---|
 | Move | A / D | ← / → | D-pad or left stick |
 | Soft drop | S | ↓ | Down |
-| Rotate clockwise | E | . | A / Cross |
-| Rotate counterclockwise | Q | , | B / Circle |
-| Hard drop | W | ↑ / Enter | X / Square |
+| Rotate clockwise | E | . | A / Cross or RB / R1 |
+| Rotate counterclockwise | Q | , | B / Circle or LB / L1 |
+| Hard drop | W | ↑ / Enter | D-pad Up |
 | Park / retrieve | C | K | Y / Triangle |
-| Request / confirm exchange | V | L | Either bumper |
+| Request / confirm exchange | V | L | X / Square |
 | Pause / resume | Escape | Escape | Start / Options |
 
 These are the defaults. **Every key and controller button can be changed** under

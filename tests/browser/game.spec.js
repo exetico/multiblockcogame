@@ -107,9 +107,9 @@ test('standard gamepad plays the right side, supports pause, and disconnect paus
     };
   });
   await expect(page.locator('#device-1')).toContainText('CONTROLLER');
-  await page.evaluate(() => { window.testPad.buttons[2].pressed = true; });
+  await page.evaluate(() => { window.testPad.buttons[12].pressed = true; });
   await expect(page.locator('#score')).not.toHaveText('000000');
-  await page.evaluate(() => { window.testPad.buttons[2].pressed = false; window.testPad.buttons[9].pressed = true; });
+  await page.evaluate(() => { window.testPad.buttons[12].pressed = false; window.testPad.buttons[9].pressed = true; });
   await expect(page.locator('#overlay-title')).toContainText('pause');
   await page.evaluate(() => { window.testPad.buttons[9].pressed = false; });
   await page.waitForTimeout(80);
@@ -338,6 +338,10 @@ test('visible controller guide explains Bluetooth, detects devices, switches sid
   await expect(page.locator('#pad-count')).toHaveText('2/2');
   await expect(page.locator('#pad-devices')).toContainText('Standard pad 1');
   await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('A / CROSS');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('RB / R1');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('LB / L1');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('D-PAD ↑');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('X / SQUARE');
   await page.locator('#swap-controllers').click();
   await expect(page.locator('#pad-devices > div').first()).toContainText('Standard pad 1');
   await page.evaluate(() => { window.testPads = [window.testPads[1]]; });
@@ -409,10 +413,10 @@ test('controller buttons can be remapped by pressing them, from the controller g
   await page.locator('#controls-done').click();
   await expect(page.locator('.control-player[data-player="1"] .controller-controls')).toContainText('RT / R2');
   await page.locator('#pause').click();
-  await page.evaluate(() => { window.testPad.buttons[2].pressed = true; });
+  await page.evaluate(() => { window.testPad.buttons[12].pressed = true; });
   await page.waitForTimeout(150);
   await expect(page.locator('#score')).toHaveText('000000');
-  await page.evaluate(() => { window.testPad.buttons[2].pressed = false; window.testPad.buttons[7].pressed = true; });
+  await page.evaluate(() => { window.testPad.buttons[12].pressed = false; window.testPad.buttons[7].pressed = true; });
   await expect(page.locator('#score')).not.toHaveText('000000');
 });
 
