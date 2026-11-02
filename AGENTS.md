@@ -95,6 +95,9 @@ connected controllers' side assignments on disconnect; side switching changes
 input ownership only and takes place while the setup dialog gates gameplay.
 Show controller hints for assigned players and retain keyboard fallback.
 Active pieces have no player-colored ownership borders; preserve landing ghosts.
+Controller defaults: D-pad Up hard drops, X/Square trades, Y/Triangle parks.
+A/Cross and RB/R1 rotate clockwise; B/Circle and LB/L1 counterclockwise.
+Migrate only exact old controller defaults; preserve customized mappings.
 Keep control hints in `.control-player` at the bottom of each desktop sidebar; assigned
 controller classes must update both sidebar and corresponding `.control-player`.
 Insert score/shared dock before the controls. Focus sidebars use size containment

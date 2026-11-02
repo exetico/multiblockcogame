@@ -249,7 +249,7 @@ let bindings = saved.controls ? cloneBindings(saved.controls) : cloneBindings();
 input.setBindings(bindings);
 const keyName = code => (code ? keyLabel(code, keyboardLayout) : '—');
 const short = index => buttonLabel(index).split(' / ')[0];
-const padName = list => (list.length === 0 ? '—' : list.length === 1 ? buttonLabel(list[0]) : list.map(short).join(' / '));
+const padName = list => (list.length === 0 ? '—' : list.map(buttonLabel).join(' · '));
 const isDefaultMove = () => ['left', 'down', 'right'].every(action => String(bindings.pad[action]) === String(DEFAULT_BINDINGS.pad[action]));
 
 function hintRow(label, values) {
