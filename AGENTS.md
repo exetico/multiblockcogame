@@ -95,7 +95,8 @@ connected controllers' side assignments on disconnect; side switching changes
 input ownership only and takes place while the setup dialog gates gameplay.
 Show controller hints for assigned players and retain keyboard fallback.
 Active pieces have no player-colored ownership borders; preserve landing ghosts.
-Controller defaults: D-pad Up hard drops, X/Square trades, Y/Triangle parks.
+Controller defaults: D-pad Up hard drops, X/Square or RT/R2 trades, Y/Triangle or
+LT/L2 parks (two remap slots per action, so triggers pair with these actions).
 A/Cross and RB/R1 rotate clockwise; B/Circle and LB/L1 counterclockwise.
 Migrate only exact old controller defaults; preserve customized mappings.
 Keep control hints in `.control-player` at the bottom of each desktop sidebar; assigned
@@ -123,7 +124,7 @@ Three manual slots live under `common-ground-stages-v1`, separate from progress.
 Write storage successfully before changing a slot in memory. Report corrupt
 slots and storage errors visibly. Loaded games are paused; set `creditedXP`
 to their existing XP to avoid crediting it again. Save/load preserves engine
-timers, hold limits, relays, pending exchanges and speed mode.
+timers, hold limits, relays (off by default), pending exchanges and speed mode.
 Every dialog gates both input and ticking. New Game pauses even a zero-score
 unfinished round and uses two explicit confirmations; cancel never resumes.
 Loading over a live round, overwriting and deleting slots require confirmation.

@@ -12,7 +12,7 @@ function toast(message) {
   toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4200);
 }
 
-const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: true, progressiveSpeed: true, focus: true, grid: true, hints: true, header: false, footer: false, layoutChosen: false, controls: null };
+const defaults = { best: 0, lifetimeXP: 0, sound: true, relays: false, relaysOptIn: true, progressiveSpeed: true, focus: true, grid: true, hints: true, header: false, footer: false, layoutChosen: false, controls: null };
 let saved = { ...defaults };
 let storageAvailable = true;
 try {
@@ -23,7 +23,9 @@ try {
       best: Number.isSafeInteger(parsed.best) && parsed.best >= 0 ? parsed.best : 0,
       lifetimeXP: Number.isSafeInteger(parsed.lifetimeXP) && parsed.lifetimeXP >= 0 ? parsed.lifetimeXP : 0,
       sound: typeof parsed.sound === 'boolean' ? parsed.sound : true,
-      relays: typeof parsed.relays === 'boolean' ? parsed.relays : true,
+      // Relays became opt-in; old saved values were the previous default, so reset them once.
+      relays: parsed.relaysOptIn === true && parsed.relays === true,
+      relaysOptIn: true,
       progressiveSpeed: typeof parsed.progressiveSpeed === 'boolean' ? parsed.progressiveSpeed : true,
       focus: typeof parsed.focus === 'boolean' ? parsed.focus : true,
       grid: typeof parsed.grid === 'boolean' ? parsed.grid : true,

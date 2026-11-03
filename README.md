@@ -34,13 +34,14 @@ in the hidden rows and use the normal lock window to move or rotate to safety.
   confirm. Both pieces respawn upright on their new sides. Press your own
   exchange button again to cancel. Blocked spawn areas prevent a trade without
   consuming either piece.
-- **Relays:** every tenth piece per player is marked `⇄`. Hand it off before
+- **Relays (off by default):** when enabled, every tenth piece per player is marked `⇄`. Hand it off before
   it locks by exchanging it or parking it for your partner. If the deadline
   expires without a handoff, it locks normally, reports **Relay missed**, and
   the next piece arrives; it never freezes waiting for the partner. Hard drop
   locks immediately and counts as a miss if it was not handed off. Taking your own
-  parked relay does not count as a handoff. Disable relays on the start or
-  game-over screen for a simpler game.
+  parked relay does not count as a handoff. Enable relays on the start or
+  game-over screen for an extra challenge. Older saved preferences are reset
+  to off once, because relays were previously on by default.
 - **Fundamentals:** independent seven-piece bags, wall-kicked rotation, ghost
   landings, three-piece previews, soft/hard drops, 500 ms lock delay with up to
   15 movement/rotation resets, rising gravity, combos, back-to-back clears, and
@@ -74,8 +75,8 @@ relay cadence, scoring, and input mappings are original choices.
 | Rotate clockwise | E | . | A / Cross or RB / R1 |
 | Rotate counterclockwise | Q | , | B / Circle or LB / L1 |
 | Hard drop | W | ↑ / Enter | D-pad Up |
-| Park / retrieve | C | K | Y / Triangle |
-| Request / confirm exchange | V | L | X / Square |
+| Park / retrieve | C | K | Y / Triangle or LT / L2 |
+| Request / confirm exchange | V | L | X / Square or RT / R2 |
 | Pause / resume | Escape | Escape | Start / Options |
 
 These are the defaults. **Every key and controller button can be changed** under

@@ -46,7 +46,7 @@ export function cells(piece) {
 }
 
 export class Game {
-  constructor({ random = Math.random, relays = true, progressiveSpeed = true } = {}) {
+  constructor({ random = Math.random, relays = false, progressiveSpeed = true } = {}) {
     this.random = random;
     this.relays = relays;
     this.progressiveSpeed = progressiveSpeed;
