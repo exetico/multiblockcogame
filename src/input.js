@@ -9,7 +9,7 @@ export const DEFAULT_BINDINGS = Object.freeze({
     { left: ['KeyA'], right: ['KeyD'], down: ['KeyS'], cw: ['KeyE'], ccw: ['KeyQ'], drop: ['KeyW'], park: ['KeyC'], exchange: ['KeyV'] },
     { left: ['ArrowLeft'], right: ['ArrowRight'], down: ['ArrowDown'], cw: ['Period'], ccw: ['Comma'], drop: ['ArrowUp', 'Enter'], park: ['KeyK'], exchange: ['KeyL'] },
   ],
-  pad: { left: [14], right: [15], down: [13], cw: [0, 5], ccw: [1, 4], drop: [12], park: [3], exchange: [2], pause: [9] },
+  pad: { left: [14], right: [15], down: [13], cw: [0, 5], ccw: [1, 4], drop: [12], park: [3, 6], exchange: [2, 7], pause: [9] },
 });
 export const SLOTS = 2;
 const RESERVED = new Set(['Escape', 'Tab', 'MetaLeft', 'MetaRight', 'OSLeft', 'OSRight', 'ContextMenu', 'CapsLock', 'NumLock', 'ScrollLock', 'Fn', 'FnLock',
@@ -60,7 +60,8 @@ export function migrateBindings(raw) {
     bindings.keys[0].drop = ['KeyW'];
   }
   const previousPad = { left: [14], right: [15], down: [13], cw: [0], ccw: [1], drop: [2], park: [3], exchange: [4, 5], pause: [9] };
-  if (PAD_ACTIONS.every(action => String(bindings.pad[action]) === String(previousPad[action]))) {
+  const previousPadWithoutTriggers = { ...DEFAULT_BINDINGS.pad, park: [3], exchange: [2] };
+  if ([previousPad, previousPadWithoutTriggers].some(old => PAD_ACTIONS.every(action => String(bindings.pad[action]) === String(old[action])))) {
     bindings.pad = cloneBindings().pad;
   }
   return bindings;

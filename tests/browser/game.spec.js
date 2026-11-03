@@ -56,7 +56,8 @@ test('help pauses play and has precise shared rules and keyboard/controller mapp
 test('sound, relay preference, best score and XP settings persist across reloads', async ({ page }) => {
   await visit(page);
   await page.getByRole('button', { name: 'Mute sound' }).click();
-  await page.locator('#relay-toggle').uncheck();
+  await expect(page.locator('#relay-toggle')).not.toBeChecked();
+  await page.locator('#relay-toggle').check();
   await page.getByRole('button', { name: 'LET’S PLAY' }).click();
   await page.keyboard.press('KeyW');
   await page.waitForTimeout(1100);
@@ -64,8 +65,15 @@ test('sound, relay preference, best score and XP settings persist across reloads
   expect(Number(best.replaceAll(',', ''))).toBeGreaterThan(0);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Enable sound' })).toBeVisible();
-  await expect(page.locator('#relay-toggle')).not.toBeChecked();
+  await expect(page.locator('#relay-toggle')).toBeChecked();
   await expect(page.locator('#best')).toHaveText(best);
+  await page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem('common-ground-v1'));
+    delete stored.relaysOptIn;
+    localStorage.setItem('common-ground-v1', JSON.stringify(stored));
+  });
+  await page.reload();
+  await expect(page.locator('#relay-toggle')).not.toBeChecked();
 });
 
 test('simultaneous movement works for both keyboard players', async ({ page }) => {
@@ -342,6 +350,8 @@ test('visible controller guide explains Bluetooth, detects devices, switches sid
   await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('LB / L1');
   await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('D-PAD ↑');
   await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('X / SQUARE');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('LT / L2');
+  await expect(page.locator('.control-player[data-player="1"] .controls:visible')).toContainText('RT / R2');
   await page.locator('#swap-controllers').click();
   await expect(page.locator('#pad-devices > div').first()).toContainText('Standard pad 1');
   await page.evaluate(() => { window.testPads = [window.testPads[1]]; });

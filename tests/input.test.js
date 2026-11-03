@@ -97,7 +97,7 @@ test('assigning a key in use swaps it, and adding an extra key moves it', () => 
   const pad = assignBinding(DEFAULT_BINDINGS, 'pad', ['drop', 0], 5);
   assert.deepEqual(pad.bindings.pad.drop, [5]);
   assert.deepEqual(pad.bindings.pad.cw, [0, 12]);
-  assert.deepEqual(clearBinding(DEFAULT_BINDINGS, 'pad', ['exchange', 0]).pad.exchange, []);
+  assert.deepEqual(clearBinding(DEFAULT_BINDINGS, 'pad', ['exchange', 0]).pad.exchange, [7]);
 });
 
 test('custom bindings drive gameplay for keyboard and controller', () => {
@@ -130,7 +130,7 @@ test('custom bindings drive gameplay for keyboard and controller', () => {
   }
 });
 
-test('default controller Up drops, face button trades, and bumpers duplicate rotations once per press', () => {
+test('default controller Up drops, face button and R2 trade, L2 parks, and bumpers duplicate rotations once per press', () => {
   const oldWindow = globalThis.window;
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   globalThis.window = { addEventListener() {} };
@@ -147,7 +147,7 @@ test('default controller Up drops, face button trades, and bumpers duplicate rot
       exchange: id => calls.push(['exchange', id]),
     };
     input.update(16, game);
-    for (const button of [12, 2, 5, 0, 4, 1, 3]) {
+    for (const button of [12, 2, 5, 0, 4, 1, 3, 6, 7]) {
       buttons[button].pressed = true;
       input.update(16, game);
       input.update(16, game);
@@ -156,7 +156,7 @@ test('default controller Up drops, face button trades, and bumpers duplicate rot
     }
     assert.deepEqual(calls, [
       ['drop', 1], ['exchange', 1], ['rotate', 1, 1], ['rotate', 1, 1],
-      ['rotate', 1, -1], ['rotate', 1, -1], ['park', 1],
+      ['rotate', 1, -1], ['rotate', 1, -1], ['park', 1], ['park', 1], ['exchange', 1],
     ]);
   } finally {
     globalThis.window = oldWindow;
@@ -173,6 +173,15 @@ test('old controller defaults migrate without overwriting custom controller or k
   assert.deepEqual(migrateBindings(old).keys, old.keys);
   old.pad.drop = [7];
   assert.deepEqual(migrateBindings(old), old);
+});
+
+test('controller defaults without triggers gain L2 park and R2 trade, but custom mappings stay', () => {
+  const previous = cloneBindings();
+  previous.pad.park = [3];
+  previous.pad.exchange = [2];
+  assert.deepEqual(migrateBindings(previous).pad, cloneBindings().pad);
+  previous.pad.drop = [12, 7];
+  assert.deepEqual(migrateBindings(previous).pad, previous.pad);
 });
 
 test('old default keyboards migrate, but custom keyboards and controller bindings are preserved', () => {
